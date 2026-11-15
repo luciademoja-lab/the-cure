@@ -1,0 +1,20 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model JournalEntry {
+  id             String   @id @default(uuid())
+  userId         String   // From frontend AuthContext
+  mood           Int
+  energy         String
+  sensation      String
+  content        String
+  aiPrompt       String?
+  elayraResponse String?
+  createdAt      DateTime @default(now())
+}

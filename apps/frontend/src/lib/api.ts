@@ -1,0 +1,104 @@
+import { supabase } from './supabase';
+
+const API_URL = ((import.meta.env.VITE_API_URL as string | undefined) || '').replace(/\/$/, '');
+
+export class ApiError extends Error {
+  constructor(public status: number, message: string) {
+    super(message);
+  }
+}
+
+async function authHeaders(): Promise<Record<string, string>> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new ApiError(401, 'Sessione scaduta. Accedi di nuovo.');
+  return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+}
+
+async function request(path: string, init: RequestInit = {}): Promise<Response> {
+  const headers = await authHeaders();
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, { ...init, headers: { ...headers, ...(init.headers || {}) } });
+  } catch {
+    throw new ApiError(0, 'Non riesco a raggiungere il server. Controlla la connessione.');
+  }
+  if (!res.ok) {
+    let message = 'Qualcosa non ha funzionato. Riprova tra poco.';
+    try {
+      const body = await res.json();
+      if (body?.error) message = body.error;
+    } catch {
+      /* risposta senza corpo JSON */
+    }
+    throw new ApiError(res.status, message);
+  }
+  return res;
+}
+
+export async function apiGet<T>(path: string): Promise<T> {
+  return (await request(path)).json();
+}
+
+export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
+  return (await request(path, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) })).json();
+}
+
+export async function apiDelete(path: string): Promise<void> {
+  await request(path, { method: 'DELETE' });
+}
+
+export type ChatMessage = { id?: string; role: 'user' | 'assistant'; content: string };
+
+/**
+ * Manda un messaggio a Elayra e riceve la risposta a pezzi (Server-Sent Events).
+ * Restituisce il testo completo quando la risposta è finita.
+ */
+export async function streamChat(
+  content: string,
+  opts: { onDelta: (text: string) => void; signal?: AbortSignal }
+): Promise<string> {
+  const res = await request('/api/chat', { method: 'POST', body: JSON.stringify({ content }), signal: opts.signal });
+  if (!res.body) throw new ApiError(0, 'Risposta vuota dal server.');
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let full = '';
+  let finished = false;
+
+  const handle = (block: string) => {
+    let event = 'message';
+    let data = '';
+    for (const line of block.split('\n')) {
+      if (line.startsWith('event:')) event = line.slice(6).trim();
+      else if (line.startsWith('data:')) data += line.slice(5).trim();
+    }
+    if (!data) return;
+    const payload = JSON.parse(data);
+    if (event === 'delta') {
+      full += payload.text;
+      opts.onDelta(payload.text);
+    } else if (event === 'done') {
+      if (typeof payload.content === 'string') full = payload.content;
+      finished = true;
+    } else if (event === 'error') {
+      throw new ApiError(502, payload.message || 'Elayra non riesce a rispondere in questo momento.');
+    }
+  };
+
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let idx: number;
+    while ((idx = buffer.indexOf('\n\n')) !== -1) {
+      const block = buffer.slice(0, idx);
+      buffer = buffer.slice(idx + 2);
+      handle(block);
+    }
+  }
+  if (buffer.trim()) handle(buffer);
+  if (!finished) throw new ApiError(0, 'La risposta si è interrotta. Riprova.');
+  return full;
+}
