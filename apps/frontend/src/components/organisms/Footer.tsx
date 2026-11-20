@@ -12,7 +12,7 @@ export function Footer() {
   if (pathname === '/') {
     return (
       <nav className="landing-legal" aria-label={t('footer.label')}>
-        <Link to="/faq">{t('footer.faq')}</Link>
+        <Link to="/faq">FAQ</Link>
         <Link to="/privacy">{t('footer.privacy')}</Link>
         <Link to="/termini">{t('footer.terms')}</Link>
         <Link to="/contatti">{t('footer.contact')}</Link>
