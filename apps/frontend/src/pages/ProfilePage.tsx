@@ -30,6 +30,7 @@ export function ProfilePage() {
   const { user } = useAuth();
   const { account, refresh } = useAccount();
   const [nickname, setNickname] = useState(account?.nickname || '');
+  const [notes, setNotes] = useState(account?.elayraNotes || '');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
@@ -61,6 +62,15 @@ export function ProfilePage() {
       await apiPost('/api/profile', { nickname });
       await refresh();
       return t('profile.saved');
+    });
+  };
+
+  const saveNotes = (e: FormEvent) => {
+    e.preventDefault();
+    void run('notes', async () => {
+      await apiPost('/api/profile', { elayraNotes: notes });
+      await refresh();
+      return t('profile.notesSaved');
     });
   };
 
@@ -187,6 +197,30 @@ export function ProfilePage() {
           </label>
         </div>
         {note('avatar')}
+      </section>
+
+      <section className="card profile-card" aria-labelledby="profile-notes">
+        <h2 id="profile-notes">{t('profile.notes')}</h2>
+        <p className="profile-muted">{t('profile.notesLead')}</p>
+        <form onSubmit={saveNotes} className="profile-form profile-form--stack profile-notes-form">
+          <textarea
+            className="journal-textarea"
+            rows={9}
+            maxLength={6000}
+            value={notes}
+            placeholder={t('profile.notesPlaceholder')}
+            onChange={(e) => setNotes(e.target.value)}
+            aria-label={t('profile.notes')}
+          />
+          <div className="profile-notes-row">
+            <span className="profile-muted profile-small">{notes.length} / 6000</span>
+            <button type="submit" className="cta-button secondary" disabled={busy !== null}>
+              {t('profile.save')}
+            </button>
+          </div>
+        </form>
+        <p className="profile-muted profile-small">{t('profile.notesPrivacy')}</p>
+        {note('notes')}
       </section>
 
       <section className="card profile-card" aria-labelledby="profile-name">

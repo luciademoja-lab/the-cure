@@ -20,6 +20,7 @@ export interface Account {
   referralCode: string | null;
   avatarKind: AvatarKind | null;
   avatarPath: string | null;
+  elayraNotes: string;
   plan: PlanId;
   usage: { used: number; limit: number };
   subscription: { plan: PlanId; status: string; current_period_end: string | null; sponsored_by: string | null } | null;

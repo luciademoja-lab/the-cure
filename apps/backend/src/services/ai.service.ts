@@ -80,6 +80,7 @@ export const aiService = {
     opts: {
       nickname?: string | null;
       hasHistory?: boolean;
+      personalNotes?: string | null;
       onDelta: (text: string) => void;
       signal?: AbortSignal;
       model?: string;
@@ -95,7 +96,11 @@ export const aiService = {
         system: [
           {
             type: 'text',
-            text: buildElayraSystemPrompt({ nickname: opts.nickname, hasHistory: opts.hasHistory }),
+            text: buildElayraSystemPrompt({
+              nickname: opts.nickname,
+              hasHistory: opts.hasHistory,
+              personalNotes: opts.personalNotes,
+            }),
             cache_control: { type: 'ephemeral' },
           },
         ],

@@ -150,7 +150,8 @@ export function createApp() {
         onboarded_at: string | null;
         avatar_kind: string | null;
         avatar_path: string | null;
-      }[]>(user, 'profiles?select=nickname,referral_code,onboarded_at,avatar_kind,avatar_path'),
+        elayra_notes: string | null;
+      }[]>(user, 'profiles?select=nickname,referral_code,onboarded_at,avatar_kind,avatar_path,elayra_notes'),
     ]);
     const planId: PlanId = isPlanId(plan.data) ? plan.data : 'free';
     const p = profile.data?.[0];
@@ -162,6 +163,7 @@ export function createApp() {
       onboarded: Boolean(p?.onboarded_at),
       avatarKind: p?.avatar_kind || null,
       avatarPath: p?.avatar_path || null,
+      elayraNotes: p?.elayra_notes || '',
     };
   };
 
@@ -199,6 +201,7 @@ export function createApp() {
         referralCode: account.referralCode,
         avatarKind: account.avatarKind,
         avatarPath: account.avatarPath,
+        elayraNotes: account.elayraNotes,
         plan: account.plan.id,
         usage: { used: account.used, limit: account.plan.monthlyMessages },
         subscription: sub?.[0] || null,
@@ -235,6 +238,12 @@ export function createApp() {
         } else {
           patch.avatar_path = null;
         }
+      }
+      if (body.elayraNotes !== undefined) {
+        if (body.elayraNotes !== null && typeof body.elayraNotes !== 'string') throw new HttpError(400, 'Testo non valido');
+        const notes = (body.elayraNotes || '').trim();
+        if (notes.length > 6000) throw new HttpError(413, 'Puoi scrivere fino a 6000 caratteri');
+        patch.elayra_notes = notes || null;
       }
       if (Object.keys(patch).length === 0) throw new HttpError(400, 'Niente da cambiare');
       await db(req.user, `profiles?id=eq.${req.user.id}`, { method: 'PATCH', body: patch });
@@ -400,6 +409,7 @@ export function createApp() {
         const reply = await aiService.streamElayraReply([...history, { role: 'user', content }], {
           nickname: account.nickname,
           hasHistory: history.length > 0,
+          personalNotes: account.elayraNotes,
           onDelta: (text) => send('delta', { text }),
           signal: abort.signal,
           model,

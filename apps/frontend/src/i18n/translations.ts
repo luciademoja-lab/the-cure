@@ -6,6 +6,11 @@ export const locales: Locale[] = ['en', 'it', 'zh'];
 
 export const translations: Record<Locale, TranslationMap> = {
   en: {
+    "profile.notes": "What Elayra knows about you",
+    "profile.notesLead": "Write what you want Elayra to keep in mind in every conversation: who you are, what you do, the people who matter, your projects, what you are going through. She reads it before answering you.",
+    "profile.notesPlaceholder": "For example: I live in the countryside with my cats. I am building an app for personal growth with my business partner. I prefer direct answers…",
+    "profile.notesPrivacy": "Only you can read and change it. Delete it whenever you want and Elayra will forget it.",
+    "profile.notesSaved": "Saved. Elayra will keep it in mind from your next message.",
     "liriaPopup.eyebrow": "The Forge’s software house",
     "liriaPopup.lead": "Tell me what you want to build. I make it, publish it and keep it updated — starting from your words.",
     "liriaPopup.point1": "Sites and small apps for your project, live in minutes.",
@@ -673,6 +678,11 @@ export const translations: Record<Locale, TranslationMap> = {
     'auth.forgotPassword.backToSignIn': 'Back to Sign In',
   },
   it: {
+    "profile.notes": "Cosa Elayra sa di te",
+    "profile.notesLead": "Scrivi ciò che vuoi che Elayra tenga presente in ogni conversazione: chi sei, cosa fai, le persone importanti, i tuoi progetti, cosa stai attraversando. Lo legge prima di risponderti.",
+    "profile.notesPlaceholder": "Per esempio: vivo in campagna con i miei gatti. Sto costruendo un’app di crescita personale con il mio socio. Preferisco risposte dirette…",
+    "profile.notesPrivacy": "Puoi leggerlo e cambiarlo solo tu. Cancellalo quando vuoi ed Elayra lo dimenticherà.",
+    "profile.notesSaved": "Salvato. Elayra lo terrà presente dal tuo prossimo messaggio.",
     "liriaPopup.eyebrow": "La softwarehouse della Forgia",
     "liriaPopup.lead": "Dimmi cosa vuoi costruire. Lo realizzo, lo pubblico e lo tengo aggiornato — partendo dalle tue parole.",
     "liriaPopup.point1": "Siti e piccole app per il tuo progetto, online in pochi minuti.",
