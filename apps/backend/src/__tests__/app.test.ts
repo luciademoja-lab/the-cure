@@ -508,6 +508,10 @@ describe('piani, pagamenti e Forgia a pagamento', () => {
     const prompt = createCalls[createCalls.length - 1].messages[0].content as string;
     expect(prompt).toContain('Bea: Abbiamo deciso il titolo');
     expect(prompt).toContain('Lumira ti chiede: riassumi le decisioni');
+    // Nella stanza Elayra sa chi è Liria e come si prepara il brief.
+    const system = createCalls[createCalls.length - 1].system[0].text as string;
+    expect(system).toContain('Secretary Liria');
+    expect(system).toContain('Chiedi a Elayra di preparare il brief');
     expect(forgeMessages.map((m) => m.role)).toEqual(['user', 'user', 'elayra']);
     expect(usage).toEqual([{ kind: 'forge', model: 'claude-sonnet-5-5' }]);
   });

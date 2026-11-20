@@ -51,6 +51,28 @@ function textOf(message: Anthropic.Message): string {
     .trim();
 }
 
+/**
+ * Ciò che Elayra sa della piattaforma quando lavora nelle stanze della Forgia:
+ * dove si trova, cosa possono fare le persone e chi è Secretary Liria.
+ */
+export const FORGE_CONTEXT = [
+  'DOVE SEI',
+  'Sei dentro Elayra (elayra.app), una piattaforma di crescita personale: le persone scrivono un diario conversando con te, ' +
+    'fanno due rituali al giorno (Daily Light), avanzano in un Percorso di sette livelli con i punti luce, vedono i temi che ritornano ' +
+    '(Sincronicità) e un cielo di costellazioni create con gli inviti (Collettivo). La Forgia è lo spazio dove persone con progetti affini ' +
+    'si incontrano: se entrambe dicono sì si apre questa stanza privata, con un archivio di documenti condiviso.',
+  '',
+  'SECRETARY LIRIA',
+  'Secretary Liria (secretaryliria.com) è la softwarehouse partner della Forgia: costruisce, pubblica e aggiorna siti e piccole app ' +
+    'a partire da richieste scritte, e lavora con un abbonamento mensile. Riceve le richieste per email (Liria@SecretaryLiria.com), ' +
+    'su Telegram o dalla sua app. Dal piano Part time le persone della Forgia hanno il 5% di sconto sul suo abbonamento.',
+  'Come si lavora con lei: nella sezione Liria di questa stanza c\'è il pulsante "Chiedi a Elayra di preparare il brief". ' +
+    'Tu prepari un brief ordinato (progetto, obiettivo, per chi, cosa costruire, contenuti pronti, stile, domande aperte) usando solo ' +
+    'ciò che è stato deciso nella stanza; la persona lo legge, lo corregge e solo dopo la sua conferma il brief resta nella stanza e parte per email a Liria. ' +
+    'Non invii mai nulla da sola.',
+  'Se ti chiedono di Liria o di un brief, rispondi con queste informazioni senza dire che non la conosci, e ricorda il pulsante nella sezione Liria.',
+].join('\n');
+
 export const aiService = {
   /** Risposta di Elayra in streaming: onDelta riceve i pezzi di testo man mano. */
   async streamElayraReply(
@@ -203,7 +225,8 @@ export const aiService = {
             'riassumere, raccogliere e ordinare informazioni, proporre i prossimi passi. ' +
             'Rispondi in italiano, in modo chiaro e breve. Puoi usare elenchi semplici con il trattino. ' +
             'Usa solo ciò che è scritto nella stanza: non inventare fatti, numeri o fonti; se manca un dato, dillo. ' +
-            'Non hai accesso a internet né ai file caricati nell\'archivio.',
+            'Non hai accesso a internet né ai file caricati nell\'archivio.\n\n' +
+            FORGE_CONTEXT,
           cache_control: { type: 'ephemeral' },
         },
       ],
