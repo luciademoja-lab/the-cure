@@ -41,7 +41,10 @@ export async function apiGet<T>(path: string): Promise<T> {
 }
 
 export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
-  return (await request(path, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) })).json();
+  const res = await request(path, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) });
+  // Alcune risposte (es. 204) non hanno corpo.
+  const text = await res.text();
+  return (text ? JSON.parse(text) : undefined) as T;
 }
 
 export async function apiDelete(path: string): Promise<void> {
@@ -56,7 +59,7 @@ export type ChatMessage = { id?: string; role: 'user' | 'assistant'; content: st
  */
 export async function streamChat(
   content: string,
-  opts: { onDelta: (text: string) => void; signal?: AbortSignal }
+  opts: { onDelta: (text: string) => void; onNote?: (content: string) => void; signal?: AbortSignal }
 ): Promise<string> {
   const res = await request('/api/chat', { method: 'POST', body: JSON.stringify({ content }), signal: opts.signal });
   if (!res.body) throw new ApiError(0, 'Risposta vuota dal server.');
@@ -82,6 +85,9 @@ export async function streamChat(
     } else if (event === 'done') {
       if (typeof payload.content === 'string') full = payload.content;
       finished = true;
+    } else if (event === 'elayra') {
+      // Un messaggio in più di Elayra, fuori dalla risposta (es. l'invito alla Forgia).
+      if (typeof payload.content === 'string') opts.onNote?.(payload.content);
     } else if (event === 'error') {
       throw new ApiError(502, payload.message || 'Elayra non riesce a rispondere in questo momento.');
     }

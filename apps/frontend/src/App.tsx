@@ -14,6 +14,7 @@ import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
+import { PlansPage } from './pages/PlansPage';
 
 function App() {
   return (
@@ -49,6 +50,11 @@ function App() {
           <Route path="/collective" element={
             <ProtectedRoute>
               <CollectivePage />
+            </ProtectedRoute>
+          } />
+          <Route path="/plans" element={
+            <ProtectedRoute>
+              <PlansPage />
             </ProtectedRoute>
           } />
           <Route path="/contatti" element={<Contatti />} />

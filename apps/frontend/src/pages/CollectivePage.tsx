@@ -1,188 +1,335 @@
-import React, { useState, useEffect } from 'react';
-import { useJournalEntries } from '../hooks/useJournalEntries';
-import { aggregateThemesFromEntries, buildCollectiveReflectionSpace } from '../services/collectiveService';
-import { CollectiveSpaceCard } from '../components/CollectiveSpaceCard';
-import { CollectiveReflectionSpace } from '../types/synchronicity';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { geoPath } from 'd3-geo';
 import { useTranslation } from '../i18n/I18nProvider';
-import '../styles/pages/CollectivePage.css';
+import { apiGet, apiPost } from '../lib/api';
+import { useAccount } from '../contexts/AccountContext';
+import {
+  claimable,
+  Constellation,
+  CONSTELLATIONS,
+  constellationLines,
+  displayName,
+  figurePath,
+  graticule,
+  nextTarget,
+  REWARD_MIN_STARS,
+  rotationTo,
+  skyProjection,
+} from '../lib/sky';
 
+type SkyState = {
+  claims: Record<string, number>;
+  mine: string[];
+  availableStars: number;
+  invited: number;
+  usedStars: number;
+  people: number;
+  myCode: string | null;
+};
+
+const SIZE = 640;
+
+/**
+ * Il Collettivo: il cielo vero, con le costellazioni dove stanno guardando dalla Terra.
+ * Si accendono quelle già reclamate; le stelle di chi guarda (le persone invitate) formano
+ * la prima costellazione in ordine alfabetico che si può reclamare.
+ */
 export function CollectivePage() {
-  const { t } = useTranslation();
-  const { entries } = useJournalEntries();
-  const [spaces, setSpaces] = useState<CollectiveReflectionSpace[]>([]);
-  const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [sortBy, setSortBy] = useState<'resonance' | 'participants' | 'mood'>('resonance');
+  const { t, locale } = useTranslation();
+  const { refresh } = useAccount();
+  const [sky, setSky] = useState<SkyState | null>(null);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [rotation, setRotation] = useState<[number, number]>(() => rotationTo(CONSTELLATIONS.find((c) => c.id === 'Ori')!));
+  const [zoom, setZoom] = useState(1);
+  const [focus, setFocus] = useState<string | null>(null);
+  const [offerIndex, setOfferIndex] = useState(0);
+  const [claiming, setClaiming] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const drag = useRef<{ x: number; y: number; rot: [number, number] } | null>(null);
+
+  const load = async () => {
+    try {
+      setSky(await apiGet<SkyState>('/api/sky'));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('chat.error.generic'));
+    }
+  };
 
   useEffect(() => {
-    if (entries.length > 0) {
-      const themes = aggregateThemesFromEntries(entries);
-      const reflectionSpaces = themes.map((theme) =>
-        buildCollectiveReflectionSpace(entries, theme)
-      );
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-      const sorted = [...reflectionSpaces].sort((a, b) => {
-        if (sortBy === 'resonance') {
-          return b.collectiveResonance - a.collectiveResonance;
-        } else if (sortBy === 'participants') {
-          return b.participantCount - a.participantCount;
-        } else {
-          return b.dominantMood - a.dominantMood;
-        }
-      });
+  const projection = useMemo(() => skyProjection(SIZE, rotation, zoom), [rotation, zoom]);
+  const path = useMemo(() => geoPath(projection).pointRadius(1.6), [projection]);
+  const mine = useMemo(() => new Set(sky?.mine || []), [sky]);
+  const offers = useMemo(() => (sky ? claimable(sky.mine, sky.availableStars, locale) : []), [sky, locale]);
+  const offer: Constellation | null = offers.length ? offers[Math.min(offerIndex, offers.length - 1)] : null;
+  const target = useMemo(() => (sky && !offer ? nextTarget(sky.mine, locale) : null), [sky, offer, locale]);
+  const focused = focus ? CONSTELLATIONS.find((c) => c.id === focus) || null : null;
 
-      setSpaces(sorted);
-      if (sorted.length > 0 && !selectedTheme) {
-        setSelectedTheme(sorted[0].theme);
-      }
-      setLoading(false);
+  const travelTo = (c: Constellation) => {
+    setFocus(c.id);
+    setRotation(rotationTo(c));
+  };
+
+  const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    drag.current = { x: e.clientX, y: e.clientY, rot: rotation };
+  };
+  const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (!drag.current) return;
+    const rect = (e.currentTarget as Element).getBoundingClientRect();
+    const k = (180 / (rect.width * zoom)) * 1.1;
+    const dx = e.clientX - drag.current.x;
+    const dy = e.clientY - drag.current.y;
+    const [l, p] = drag.current.rot;
+    // Il cielo è rovesciato orizzontalmente: trascinare a destra porta in vista ciò che sta a est.
+    setRotation([l - dx * k, Math.max(-90, Math.min(90, p - dy * k))]);
+  };
+  const onPointerUp = () => {
+    drag.current = null;
+  };
+  const onWheel = (e: React.WheelEvent<SVGSVGElement>) => {
+    setZoom((z) => Math.max(0.8, Math.min(6, z * (e.deltaY < 0 ? 1.12 : 0.89))));
+  };
+
+  const claim = async (c: Constellation) => {
+    setClaiming(true);
+    setError('');
+    setNotice('');
+    try {
+      const result = await apiPost<{ rewarded: boolean }>('/api/sky/claim', { constellation: c.id });
+      setNotice(result.rewarded ? t('sky.claimedReward', { name: displayName(c, locale) }) : t('sky.claimed', { name: displayName(c, locale) }));
+      setOfferIndex(0);
+      await load();
+      travelTo(c);
+      void refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('chat.error.generic'));
+    } finally {
+      setClaiming(false);
     }
-  }, [entries, sortBy]);
+  };
 
-  const selectedSpace = spaces.find((s) => s.theme === selectedTheme);
+  const regenerate = async () => {
+    if (!window.confirm(t('sky.regenerateConfirm'))) return;
+    try {
+      const { referralCode } = await apiPost<{ referralCode: string }>('/api/referral/regenerate');
+      setSky((prev) => (prev ? { ...prev, myCode: referralCode } : prev));
+      setCopied(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('chat.error.generic'));
+    }
+  };
 
-  const averageResonance = spaces.length > 0 
-    ? Math.round(spaces.reduce((sum, s) => sum + s.collectiveResonance, 0) / spaces.length)
-    : 0;
+  const inviteLink = sky?.myCode ? `${window.location.origin}/register?ref=${sky.myCode}` : '';
+  const pending = sky ? Math.max(0, sky.invited - sky.availableStars - sky.usedStars) : 0;
+  const totalClaims = sky ? Object.values(sky.claims).reduce((a, b) => a + b, 0) : 0;
 
   return (
-    <div className="collective-page">
-      <div className="page-header">
-        <h1>{t('collective.title')}</h1>
-        <p className="subtitle">{t('collective.subtitle')}</p>
-      </div>
+    <main className="page-shell collective-map-page">
+      <h1>{t('collective.mapTitle')}</h1>
+      <p className="forge-lead">{t('sky.lead')}</p>
 
-      <div className="page-content">
-        {loading ? (
-          <div className="loading-state">
-            <p>{t('collective.loading')}</p>
-          </div>
-        ) : spaces.length === 0 ? (
-          <div className="empty-state">
-            <p>{t('collective.noThemes')}</p>
-            <p className="subtitle">{t('collective.addEntries')}</p>
-          </div>
-        ) : (
-          <div className="collective-container">
-            <div className="themes-sidebar">
-              <div className="sidebar-header">
-                <h2>{t('collective.themes')}</h2>
-                <span className="theme-count">{spaces.length}</span>
-              </div>
+      {error && (
+        <p className="page-error" role="alert">
+          {error}
+        </p>
+      )}
+      {notice && (
+        <p className="plans-notice" role="status">
+          {notice}
+        </p>
+      )}
 
-              <div className="sort-controls">
-                <button
-                  className={`sort-btn ${sortBy === 'resonance' ? 'active' : ''}`}
-                  onClick={() => setSortBy('resonance')}
-                >
-                  {t('collective.resonance')}
+      {sky && (
+        <>
+          <div className="sky-layout">
+            <div className="constellation-frame sky-frame">
+              <svg
+                className="constellation sky"
+                viewBox={`0 0 ${SIZE} ${SIZE}`}
+                role="img"
+                aria-label={t('sky.mapLabel', { claimed: Object.keys(sky.claims).length })}
+                onPointerDown={onPointerDown}
+                onPointerMove={onPointerMove}
+                onPointerUp={onPointerUp}
+                onPointerCancel={onPointerUp}
+                onWheel={onWheel}
+              >
+                <defs>
+                  <radialGradient id="sky-bg">
+                    <stop offset="0%" stopColor="#14100a" />
+                    <stop offset="100%" stopColor="#030302" />
+                  </radialGradient>
+                </defs>
+                <path d={path({ type: 'Sphere' }) || ''} fill="url(#sky-bg)" className="sky-sphere" />
+                <path d={path(graticule) || ''} className="sky-graticule" />
+                {CONSTELLATIONS.map((c) => {
+                  const count = sky.claims[c.id] || 0;
+                  const state = mine.has(c.id) ? 'mine' : count > 0 ? 'claimed' : 'open';
+                  const glow = count > 0 ? Math.min(1, 0.45 + Math.log2(1 + count) * 0.18) : undefined;
+                  return (
+                    <g
+                      key={c.id}
+                      className={`sky-constellation ${state} ${focus === c.id ? 'focused' : ''}`}
+                      style={glow ? { opacity: glow } : undefined}
+                      onClick={() => setFocus(c.id)}
+                    >
+                      <path d={path(constellationLines(c)) || ''} className="sky-lines" />
+                      <path d={path({ type: 'MultiPoint', coordinates: c.stars }) || ''} className="sky-stars" />
+                    </g>
+                  );
+                })}
+              </svg>
+              <div className="sky-controls">
+                <button type="button" className="forge-link" onClick={() => setZoom((z) => Math.min(6, z * 1.3))} aria-label={t('sky.zoomIn')}>
+                  +
                 </button>
-                <button
-                  className={`sort-btn ${sortBy === 'participants' ? 'active' : ''}`}
-                  onClick={() => setSortBy('participants')}
-                >
-                  {t('collective.participants')}
+                <button type="button" className="forge-link" onClick={() => setZoom((z) => Math.max(0.8, z / 1.3))} aria-label={t('sky.zoomOut')}>
+                  −
                 </button>
-                <button
-                  className={`sort-btn ${sortBy === 'mood' ? 'active' : ''}`}
-                  onClick={() => setSortBy('mood')}
+                <select
+                  aria-label={t('sky.travel')}
+                  value={focus || ''}
+                  onChange={(e) => {
+                    const c = CONSTELLATIONS.find((x) => x.id === e.target.value);
+                    if (c) travelTo(c);
+                  }}
                 >
-                  {t('collective.mood')}
-                </button>
+                  <option value="">{t('sky.travel')}</option>
+                  {[...CONSTELLATIONS]
+                    .sort((a, b) => displayName(a, locale).localeCompare(displayName(b, locale), locale))
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {displayName(c, locale)}
+                        {sky.claims[c.id] ? ` · ${sky.claims[c.id]}` : ''}
+                      </option>
+                    ))}
+                </select>
               </div>
-
-              <div className="themes-list">
-                {spaces.map((space) => (
-                  <button
-                    key={space.theme}
-                    className={`theme-button ${selectedTheme === space.theme ? 'active' : ''}`}
-                    onClick={() => setSelectedTheme(space.theme)}
-                  >
-                    <span className="theme-name">{space.theme}</span>
-                    <span className="theme-badge">{space.participantCount}</span>
-                  </button>
-                ))}
-              </div>
-
-              <div className="consent-notice">
-                <p>{t('collective.anonymizedNotice')}</p>
-              </div>
-            </div>
-
-            <div className="space-main">
-              {selectedSpace && (
-                <div className="space-detail">
-                  <div className="space-header">
-                    <h2>{selectedSpace.theme}</h2>
-                    <div className="space-stats">
-                      <div className="stat">
-                        <span className="label">{t('collective.participants')}</span>
-                        <span className="value">{selectedSpace.participantCount}</span>
-                      </div>
-                      <div className="stat">
-                        <span className="label">{t('collective.resonance')}</span>
-                        <span className="value">{Math.round(selectedSpace.collectiveResonance)}%</span>
-                      </div>
-                      <div className="stat">
-                        <span className="label">{t('collective.mood')}</span>
-                        <span className="value">{selectedSpace.dominantMood}/10</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="shared-insights">
-                    <h3>{t('collective.sharedWisdom')}</h3>
-                    <div className="insights-cards">
-                      {selectedSpace.sharedInsights.length > 0 ? (
-                        selectedSpace.sharedInsights.map((insight, idx) => (
-                          <div key={idx} className="insight-card">
-                            <div className="insight-content">
-                              <p className="insight-text">{insight.insight}</p>
-                            </div>
-                            <div className="insight-footer">
-                              <span className="mood-indicator">
-                                💭 {insight.moodLevel}/10
-                              </span>
-                              <span className="anonymity">🔒 {insight.anonymityLevel}</span>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="no-insights">{t('collective.noInsights')}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="invitation-section">
-                    <h3>{t('collective.shareVoice')}</h3>
-                    <p>
-                      {t('collective.shareQuestion', { theme: selectedSpace.theme })}
-                    </p>
-                    <button className="share-btn">{t('collective.contributeButton')}</button>
-                  </div>
-                </div>
+              {focused && (
+                <p className="sky-focus">
+                  <strong>{displayName(focused, locale)}</strong> · {t('sky.starsCount', { count: focused.stars.length })} ·{' '}
+                  {sky.claims[focused.id] ? t('sky.claimedBy', { count: sky.claims[focused.id] }) : t('sky.nobody')}
+                  {mine.has(focused.id) ? ` · ${t('sky.yours')}` : ''}
+                </p>
               )}
             </div>
-          </div>
-        )}
 
-        <div className="stats-section">
-          <div className="stat-card">
-            <span className="stat-label">{t('collective.totalThemes')}</span>
-            <span className="stat-value">{spaces.length}</span>
+            <aside className="card forge-card sky-panel">
+              <h2>{t('sky.yourStars')}</h2>
+              <p className="path-points">{sky.availableStars}</p>
+              <p className="path-next">{t('sky.starsHint')}</p>
+
+              {offer ? (
+                <>
+                  <ConstellationFigure c={offer} lit={offer.stars.length} />
+                  <h3 className="sky-offer-name">{displayName(offer, locale)}</h3>
+                  <p className="path-next">
+                    {t('sky.starsCount', { count: offer.stars.length })}
+                    {offer.stars.length >= REWARD_MIN_STARS ? ` · ${t('sky.rewardYes')}` : ` · ${t('sky.rewardNo')}`}
+                  </p>
+                  {offers.length > 1 && (
+                    <div className="sky-offer-nav">
+                      <button type="button" className="forge-link" onClick={() => setOfferIndex((i) => (i - 1 + offers.length) % offers.length)} aria-label={t('sky.prev')}>
+                        ‹
+                      </button>
+                      <span>
+                        {Math.min(offerIndex, offers.length - 1) + 1} / {offers.length}
+                      </span>
+                      <button type="button" className="forge-link" onClick={() => setOfferIndex((i) => (i + 1) % offers.length)} aria-label={t('sky.next')}>
+                        ›
+                      </button>
+                    </div>
+                  )}
+                  <button type="button" className="cta-button primary" disabled={claiming} onClick={() => claim(offer)}>
+                    {t('sky.claim')}
+                  </button>
+                  {offer.stars.length < REWARD_MIN_STARS && <p className="chat-disclaimer">{t('sky.waitHint')}</p>}
+                </>
+              ) : target ? (
+                <>
+                  <ConstellationFigure c={target} lit={sky.availableStars} />
+                  <p className="path-next">{t('sky.nextTarget', { name: displayName(target, locale), count: target.stars.length - sky.availableStars })}</p>
+                </>
+              ) : (
+                <p className="path-next">{t('sky.allClaimed')}</p>
+              )}
+            </aside>
           </div>
-          <div className="stat-card">
-            <span className="stat-label">{t('collective.averageResonance')}</span>
-            <span className="stat-value">{averageResonance}%</span>
-          </div>
-          <div className="stat-card">
-            <span className="stat-label">{t('collective.totalInsights')}</span>
-            <span className="stat-value">
-              {spaces.reduce((sum, s) => sum + s.sharedInsights.length, 0)}
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
+
+          <ul className="constellation-legend">
+            <li className="me">{t('sky.legendMine')}</li>
+            <li className="mine">{t('sky.legendClaimed')}</li>
+            <li>{t('sky.legendOpen')}</li>
+          </ul>
+
+          <section className="card forge-card constellation-stats">
+            <p>{t('collective.count', { count: sky.people })}</p>
+            <p>{t('sky.totalClaims', { count: totalClaims, constellations: Object.keys(sky.claims).length })}</p>
+            <p>{t('collective.invited', { count: sky.invited })}</p>
+            {pending > 0 && <p className="path-next">{t('sky.pending', { count: pending })}</p>}
+            <p className="path-how">{t('sky.rules')}</p>
+            {inviteLink && (
+              <div className="form-group">
+                <label htmlFor="invite-link">{t('collective.linkLabel')}</label>
+                <div className="constellation-link">
+                  <input id="invite-link" type="text" readOnly value={inviteLink} onFocus={(e) => e.currentTarget.select()} />
+                  <button
+                    type="button"
+                    className="cta-button secondary"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(inviteLink);
+                        setCopied(true);
+                      } catch {
+                        setCopied(false);
+                      }
+                    }}
+                  >
+                    {t('collective.copy')}
+                  </button>
+                </div>
+                <p className="path-next">
+                  {t('sky.code')} <code>{sky.myCode}</code>
+                  {copied && <span className="path-saved"> · {t('collective.copied')}</span>}
+                </p>
+                <button type="button" className="forge-link" onClick={regenerate}>
+                  {t('sky.regenerate')}
+                </button>
+              </div>
+            )}
+          </section>
+        </>
+      )}
+    </main>
+  );
+}
+
+/** La figura di una costellazione con le stelle accese: `lit` stelle su tutte quelle della figura. */
+function ConstellationFigure({ c, lit }: { c: Constellation; lit: number }) {
+  const W = 260;
+  const H = 200;
+  const { projection } = figurePath(c, W, H);
+  const points = c.stars.map((s) => projection(s) || [0, 0]);
+  return (
+    <svg className="sky-figure" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${c.name}: ${Math.min(lit, c.stars.length)}/${c.stars.length}`}>
+      {c.lines.map(([a, b], i) => (
+        <line
+          key={i}
+          x1={points[a][0]}
+          y1={points[a][1]}
+          x2={points[b][0]}
+          y2={points[b][1]}
+          className={`sky-figure-line ${a < lit && b < lit ? 'lit' : ''}`}
+        />
+      ))}
+      {points.map(([x, y], i) => (
+        <circle key={i} cx={x} cy={y} r={i < lit ? 4 : 2.5} className={`sky-figure-star ${i < lit ? 'lit' : ''}`} />
+      ))}
+    </svg>
   );
 }

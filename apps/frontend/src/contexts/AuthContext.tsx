@@ -5,6 +5,32 @@ import { AuthContextType, User, LoginCredentials, RegisterData, RegisterResult, 
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const REFERRAL_KEY = 'elayra-referral';
+
+export function rememberReferral(code: string) {
+  try {
+    window.localStorage.setItem(REFERRAL_KEY, code);
+  } catch {
+    /* archiviazione non disponibile */
+  }
+}
+
+export function pendingReferral(): string {
+  try {
+    return window.localStorage.getItem(REFERRAL_KEY) || '';
+  } catch {
+    return '';
+  }
+}
+
+export function clearReferral() {
+  try {
+    window.localStorage.removeItem(REFERRAL_KEY);
+  } catch {
+    /* archiviazione non disponibile */
+  }
+}
+
 interface AuthProviderProps {
   children: ReactNode;
 }
@@ -71,7 +97,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         email: data.email,
         password: data.password,
         options: {
-          data: { nickname: data.nickname },
+          data: {
+            nickname: data.nickname,
+            adult_confirmed: 'true',
+            ...(data.referralCode ? { referral_code: data.referralCode } : {}),
+          },
           emailRedirectTo: `${window.location.origin}/journal`,
         },
       });
@@ -86,6 +116,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  /** Accesso o registrazione con Google. Il codice di invito resta da parte e si usa al primo accesso. */
+  const signInWithGoogle = async (referralCode?: string): Promise<void> => {
+    if (referralCode) rememberReferral(referralCode);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/journal` },
+    });
+    if (error) throw new Error(error.message);
   };
 
   const logout = () => {
@@ -121,6 +161,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     logout,
     resetPassword,
     updatePassword,
+    signInWithGoogle,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

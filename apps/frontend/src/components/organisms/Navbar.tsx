@@ -17,6 +17,12 @@ export function Navbar() {
 
   const authenticatedLinks = [
     { path: '/journal', label: t('nav.journal') },
+    { path: '/daily-light', label: t('nav.dailyLight') },
+    { path: '/gaming', label: t('nav.path') },
+    { path: '/synchronicities', label: t('nav.synchronicities') },
+    { path: '/forge', label: t('nav.forge') },
+    { path: '/collective', label: t('nav.collective') },
+    { path: '/plans', label: t('nav.plans') },
   ];
 
   const links = isAuthenticated ? authenticatedLinks : publicLinks;

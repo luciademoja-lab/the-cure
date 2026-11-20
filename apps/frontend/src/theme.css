@@ -340,3 +340,899 @@ a {
 .auth-container .auth-links p {
   margin: 0;
 }
+
+/* ── Barra: più pagine, anche su schermi stretti ─────────── */
+.navbar-container {
+  flex-wrap: wrap;
+  row-gap: 0.25rem;
+}
+
+.navbar-links {
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+@media (max-width: 760px) {
+  .navbar-links {
+    order: 3;
+    width: 100%;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .nav-link {
+    white-space: nowrap;
+    padding: 0.6rem 0.7rem;
+  }
+  .user-email {
+    display: none;
+  }
+}
+
+.page-error {
+  max-width: 760px;
+  margin: 0 auto 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(220, 110, 95, 0.45);
+  border-radius: 8px;
+  background: rgba(190, 70, 60, 0.12);
+  color: #f3cfc8;
+  text-align: center;
+}
+
+/* ── Daily Light ─────────────────────────────────────────── */
+.daily-practice-header {
+  text-align: center;
+}
+
+.daily-subtitle,
+.ritual-subtitle,
+.ritual-hint {
+  color: var(--text-muted);
+}
+
+.ritual-card,
+.elayra-message-card,
+.ritual-complete-message {
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--text-body);
+}
+
+.ritual-complete-message {
+  padding: 1.5rem;
+}
+
+.ritual-prompt-box {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--gold);
+  border-radius: 6px;
+}
+
+.ritual-prompt,
+.ritual-saved-response,
+.path-question {
+  font-family: var(--font-heading);
+  font-size: 1.15rem;
+  color: var(--text);
+  margin: 0.5rem 0;
+  padding: 0;
+  border: none;
+}
+
+.ritual-saved-response {
+  padding-left: 1rem;
+  border-left: 2px solid var(--gold);
+  white-space: pre-wrap;
+}
+
+.ritual-points,
+.path-saved {
+  color: var(--gold);
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+}
+
+.ritual-textarea {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  padding: 0.85rem 1rem;
+}
+
+.ritual-textarea:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(207, 165, 74, 0.15);
+}
+
+.ritual-btn,
+.ritual-btn.evening {
+  background: linear-gradient(160deg, var(--gold-light), var(--gold) 55%, var(--gold-dark));
+  color: var(--on-gold);
+  border: none;
+  border-radius: 4px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 0.95rem 1.6rem;
+}
+
+.soothing-words {
+  background: transparent;
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+}
+
+.soothing-text {
+  color: var(--text-muted);
+}
+
+/* ── Il Percorso ─────────────────────────────────────────── */
+.path-page {
+  max-width: 820px;
+}
+
+.path-intro,
+.path-next,
+.path-how {
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.path-how {
+  font-size: 0.9rem;
+  margin-bottom: 0;
+}
+
+.path-summary {
+  margin: 1.5rem 0;
+  padding: 1.75rem;
+}
+
+.path-summary-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.6rem;
+}
+
+.path-points {
+  font-family: var(--font-heading);
+  font-size: 3rem;
+  line-height: 1;
+  color: var(--gold-light);
+}
+
+.path-points-label,
+.path-threshold {
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.path-bar {
+  height: 6px;
+  margin: 1.25rem 0 0.75rem;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.path-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold-dark), var(--gold), var(--gold-light));
+  transition: width 0.6s ease;
+}
+
+.path-levels {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.path-level {
+  padding: 1.25rem 1.5rem;
+}
+
+.path-level.locked {
+  opacity: 0.55;
+}
+
+.path-level-header {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.path-level-header h3 {
+  margin: 0;
+  flex: 1;
+  font-size: 1.15rem;
+}
+
+.path-level.locked h3 {
+  color: var(--text-muted);
+}
+
+.path-symbol {
+  min-width: 2.5rem;
+  text-align: center;
+  font-size: 1.3rem;
+  color: var(--gold);
+}
+
+.path-question {
+  margin: 1rem 0 0.75rem;
+}
+
+.path-level .journal-textarea {
+  width: 100%;
+  min-height: 0;
+}
+
+.path-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.75rem;
+}
+
+/* ── Forgia ──────────────────────────────────────────────── */
+.forge-page,
+.collective-map-page {
+  max-width: 860px;
+}
+
+.forge-lead,
+.forge-center {
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.forge-card {
+  margin: 1.25rem 0;
+  padding: 1.5rem;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.forge-card h2,
+.forge-card h3,
+.forge-card p {
+  margin: 0;
+}
+
+.forge-card h2 {
+  font-size: 1.4rem;
+}
+
+.forge-card .form-group {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.forge-card input[type='text'],
+.forge-card .journal-textarea {
+  width: 100%;
+  padding: 0.75rem 0.9rem;
+  font-size: 1rem;
+  min-height: 0;
+}
+
+.forge-areas {
+  border: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.forge-areas legend,
+.forge-tags,
+.forge-author {
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.forge-areas legend {
+  margin-bottom: 0.6rem;
+}
+
+.forge-tags {
+  color: var(--gold);
+}
+
+.forge-author {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.forge-chip {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--text-body);
+  padding: 0.4rem 0.85rem;
+  font-size: 0.85rem;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.forge-chip:hover {
+  border-color: var(--gold);
+}
+
+.forge-chip.selected {
+  background: rgba(207, 165, 74, 0.18);
+  border-color: var(--gold);
+  color: var(--gold-light);
+}
+
+.forge-privacy {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  border-left: 2px solid var(--gold);
+  padding-left: 0.9rem;
+}
+
+.forge-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.forge-link {
+  background: none;
+  border: none;
+  padding: 0.25rem 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.forge-link:hover {
+  color: var(--gold-light);
+}
+
+.forge-section-title {
+  text-align: center;
+  font-size: 1.3rem;
+  margin: 2rem 0 0.5rem;
+}
+
+.forge-matches {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.forge-match.closed {
+  opacity: 0.5;
+}
+
+/* ── Collettivo: la mappa ────────────────────────────────── */
+.constellation-frame {
+  margin: 1.5rem 0 0.75rem;
+  background: radial-gradient(ellipse at 50% 40%, #15110a, #050403 75%);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.constellation {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.constellation-thread {
+  stroke: rgba(207, 165, 74, 0.35);
+  stroke-width: 1;
+}
+
+.constellation-thread.mine {
+  stroke: var(--gold-light);
+  stroke-width: 1.4;
+}
+
+.constellation-star {
+  opacity: 0.55;
+}
+
+.constellation-star.mine,
+.constellation-star.me {
+  opacity: 1;
+}
+
+.constellation-core {
+  fill: #f3ead8;
+}
+
+.constellation-star.mine .constellation-core,
+.constellation-star.me .constellation-core {
+  fill: var(--gold-light);
+}
+
+.constellation-legend {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.25rem;
+  margin: 0 0 1rem;
+  padding: 0;
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.constellation-legend li::before {
+  content: '';
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: 0.5rem;
+  border-radius: 50%;
+  background: #8f8166;
+}
+
+.constellation-legend li.mine::before {
+  background: var(--gold);
+}
+
+.constellation-legend li.me::before {
+  background: var(--gold-light);
+  box-shadow: 0 0 8px 2px rgba(236, 212, 154, 0.7);
+}
+
+.constellation-stats {
+  text-align: center;
+}
+
+.constellation-link {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.constellation-link input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Accesso: Google, 2FA, primo accesso ─────────────────── */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1.25rem 0 0.75rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.google-button {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 0.85rem 1rem;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-weight: 600;
+  transition: border-color 0.2s ease;
+}
+
+.google-button:hover:not(:disabled) {
+  border-color: var(--gold);
+}
+
+.gate {
+  max-width: 460px;
+}
+
+.gate-steps {
+  color: var(--text-body);
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.gate-qr {
+  display: block;
+  margin: 1rem auto;
+  background: #fff;
+  padding: 8px;
+  border-radius: 6px;
+}
+
+.gate-secret {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.gate-secret code,
+.path-next code {
+  color: var(--gold-light);
+  font-size: 0.95rem;
+}
+
+.gate-logout {
+  display: block;
+  margin: 1rem auto 0;
+}
+
+.gate-note {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+#mfa-code {
+  font-size: 1.6rem;
+  letter-spacing: 0.4em;
+  text-align: center;
+}
+
+/* ── Piani ───────────────────────────────────────────────── */
+.plans-page {
+  max-width: 1080px;
+}
+
+.plans-notice {
+  max-width: 760px;
+  margin: 0 auto 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--gold);
+  border-radius: 8px;
+  background: var(--surface-1);
+  text-align: center;
+}
+
+.plans-usage {
+  max-width: 760px;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+}
+
+.plans-usage .cta-button {
+  justify-self: center;
+}
+
+.plans-grid {
+  list-style: none;
+  margin: 1.5rem 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 1rem;
+}
+
+.plan-card {
+  padding: 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.plan-card.current {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 1px var(--gold), 0 20px 60px -30px rgba(207, 165, 74, 0.5);
+}
+
+.plan-card h2 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.plan-price {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.8rem;
+  color: var(--gold-light);
+}
+
+.plan-price span {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.plan-features {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+  font-size: 0.9rem;
+  flex: 1;
+}
+
+.plan-features li::before {
+  content: '✦ ';
+  color: var(--gold);
+}
+
+.plan-features li.off {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+
+.plan-features li.off::before {
+  content: '· ';
+}
+
+.plan-badge {
+  margin: 0;
+  text-align: center;
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+/* ── Stanze: Elayra, pagamento, archivio ─────────────────── */
+.chat-message.room-elayra {
+  border-left: 2px solid var(--gold);
+  background: var(--surface-2);
+}
+
+.room-paywall select,
+.sky-controls select {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0.6rem 0.75rem;
+  font-family: var(--font-body);
+  min-width: 0;
+  flex: 1;
+}
+
+.room-duo {
+  display: grid;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.archive-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.archive-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.archive-list li .forge-link:first-child {
+  flex: 1;
+  text-align: left;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.archive-size {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.archive-upload {
+  justify-self: start;
+  cursor: pointer;
+}
+
+/* ── Il cielo ────────────────────────────────────────────── */
+.collective-map-page {
+  max-width: 1120px;
+}
+
+.sky-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+@media (min-width: 900px) {
+  .sky-layout {
+    grid-template-columns: minmax(0, 1fr) 320px;
+    align-items: start;
+  }
+}
+
+.sky-frame {
+  margin: 0;
+  position: relative;
+  background: #030302;
+}
+
+.sky {
+  touch-action: none;
+  cursor: grab;
+}
+
+.sky:active {
+  cursor: grabbing;
+}
+
+.sky-sphere {
+  stroke: rgba(207, 165, 74, 0.25);
+}
+
+.sky-graticule {
+  fill: none;
+  stroke: rgba(207, 165, 74, 0.06);
+  stroke-width: 0.6;
+}
+
+.sky-lines {
+  fill: none;
+  stroke: rgba(243, 234, 216, 0.16);
+  stroke-width: 0.8;
+}
+
+.sky-stars {
+  fill: rgba(243, 234, 216, 0.45);
+}
+
+.sky-constellation {
+  cursor: pointer;
+}
+
+.sky-constellation.claimed .sky-lines {
+  stroke: var(--gold);
+  stroke-width: 1.2;
+}
+
+.sky-constellation.claimed .sky-stars {
+  fill: var(--gold-light);
+}
+
+.sky-constellation.mine .sky-lines {
+  stroke: var(--gold-light);
+  stroke-width: 1.8;
+  filter: drop-shadow(0 0 3px rgba(236, 212, 154, 0.8));
+}
+
+.sky-constellation.mine .sky-stars {
+  fill: #fff6dc;
+}
+
+.sky-constellation.focused .sky-lines {
+  stroke-width: 2.2;
+  stroke: #fff6dc;
+}
+
+.sky-controls {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  right: 0.75rem;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.sky-controls .forge-link {
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: rgba(11, 9, 7, 0.75);
+  text-decoration: none;
+  font-size: 1.1rem;
+  color: var(--gold-light);
+}
+
+.sky-controls select {
+  max-width: 240px;
+  margin-left: auto;
+  background: rgba(11, 9, 7, 0.85);
+}
+
+.sky-focus {
+  margin: 0;
+  padding: 0.6rem 1rem;
+  text-align: center;
+  font-size: 0.9rem;
+  border-top: 1px solid var(--line);
+  color: var(--text-muted);
+}
+
+.sky-focus strong {
+  color: var(--gold-light);
+  font-weight: 600;
+}
+
+.sky-panel {
+  margin: 0;
+  text-align: center;
+  justify-items: center;
+}
+
+.sky-panel h2 {
+  font-size: 1.2rem;
+}
+
+.sky-offer-name {
+  font-size: 1.3rem;
+}
+
+.sky-figure {
+  width: 100%;
+  max-width: 260px;
+  height: auto;
+  background: radial-gradient(ellipse at center, #15110a, #050403 80%);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.sky-figure-line {
+  stroke: rgba(243, 234, 216, 0.18);
+  stroke-width: 1;
+}
+
+.sky-figure-line.lit {
+  stroke: var(--gold);
+  stroke-width: 1.5;
+}
+
+.sky-figure-star {
+  fill: rgba(243, 234, 216, 0.35);
+}
+
+.sky-figure-star.lit {
+  fill: #fff6dc;
+  filter: drop-shadow(0 0 4px rgba(236, 212, 154, 0.9));
+}
+
+.sky-offer-nav {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.sky-offer-nav .forge-link {
+  font-size: 1.4rem;
+  text-decoration: none;
+}

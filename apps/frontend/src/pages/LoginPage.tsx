@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from '../i18n/I18nProvider';
 import { SuccessModal } from '../components/atoms/SuccessModal';
+import { GoogleButton } from '../components/auth/GoogleButton';
 
 export function LoginPage() {
   const { t } = useTranslation();
@@ -115,6 +116,8 @@ export function LoginPage() {
             {isLoading ? t('auth.login.submitLoading') : t('auth.login.submit')}
           </button>
         </form>
+
+        <GoogleButton />
 
         <div className="auth-links">
           <Link to="/forgot-password" className="auth-link">

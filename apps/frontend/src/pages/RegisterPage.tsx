@@ -1,14 +1,17 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from '../i18n/I18nProvider';
 import { RegisterData, MIN_AGE } from '../types/auth';
 import { SuccessModal } from '../components/atoms/SuccessModal';
+import { GoogleButton } from '../components/auth/GoogleButton';
 
 export function RegisterPage() {
   const { t } = useTranslation();
   const { register, isLoading } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const referralCode = (searchParams.get('ref') || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 16);
 
   const [formData, setFormData] = useState<RegisterData>({
     email: '',
@@ -68,7 +71,7 @@ export function RegisterPage() {
     }
 
     try {
-      const result = await register(formData);
+      const result = await register({ ...formData, referralCode: referralCode || undefined });
       if (result.needsEmailConfirmation) {
         setConfirmEmailSent(true);
         return;
@@ -226,6 +229,8 @@ export function RegisterPage() {
             {isLoading ? t('auth.register.submitLoading') : t('auth.register.submit')}
           </button>
         </form>
+
+        <GoogleButton referralCode={referralCode || undefined} />
 
         <div className="auth-links">
           <p>

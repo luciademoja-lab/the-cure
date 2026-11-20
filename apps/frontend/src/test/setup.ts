@@ -63,6 +63,14 @@ vi.mock('/src/lib/supabase.ts', () => ({
         return { error: null };
       },
       resetPasswordForEmail: async () => ({ data: {}, error: null }),
+      signInWithOAuth: async () => ({ data: {}, error: null }),
+      mfa: {
+        getAuthenticatorAssuranceLevel: async () => ({ data: { currentLevel: 'aal2', nextLevel: 'aal2' }, error: null }),
+        listFactors: async () => ({ data: { all: [], totp: [] }, error: null }),
+        enroll: async () => ({ data: { id: 'f1', totp: { qr_code: '', secret: 'SECRET' } }, error: null }),
+        unenroll: async () => ({ data: {}, error: null }),
+        challengeAndVerify: async () => ({ data: {}, error: null }),
+      },
       updateUser: async () => ({ data: {}, error: null }),
     },
   },

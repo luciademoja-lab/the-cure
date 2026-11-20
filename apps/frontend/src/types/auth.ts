@@ -29,6 +29,8 @@ export interface RegisterData {
   /** Serve solo a verificare la maggiore età: non viene salvata. */
   age: number;
   gender?: 'male' | 'female' | 'other' | 'prefer-not-to-say';
+  /** Codice di chi ha invitato questa persona (dal link ?ref=...). */
+  referralCode?: string;
 }
 
 export interface RegisterResult {
@@ -42,4 +44,5 @@ export interface AuthContextType extends AuthState {
   logout: () => void;
   resetPassword: (email: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
+  signInWithGoogle: (referralCode?: string) => Promise<void>;
 }

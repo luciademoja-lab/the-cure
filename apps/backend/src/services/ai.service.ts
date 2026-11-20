@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { config } from '../config';
 import { buildElayraSystemPrompt } from '../elayra.prompt';
 import { HttpError } from './supabase';
+import { FORGE_AREAS, FORGE_PROJECT_TYPES, FORGE_STYLES, ForgeDraft, sanitizeDraft } from '../forge';
 
 export type ChatTurn = { role: 'user' | 'assistant'; content: string };
 
@@ -33,6 +34,15 @@ export function normalizeTurns(turns: ChatTurn[]): ChatTurn[] {
   return out;
 }
 
+/** Segna l'ultimo messaggio come punto di cache: al turno successivo tutto ciò che precede costa molto meno. */
+function withCacheBreakpoint(turns: ChatTurn[]): Anthropic.MessageParam[] {
+  return turns.map((t, i) =>
+    i === turns.length - 1
+      ? { role: t.role, content: [{ type: 'text' as const, text: t.content, cache_control: { type: 'ephemeral' as const } }] }
+      : { role: t.role, content: t.content }
+  );
+}
+
 function textOf(message: Anthropic.Message): string {
   return message.content
     .filter((b): b is Anthropic.TextBlock => b.type === 'text')
@@ -45,16 +55,29 @@ export const aiService = {
   /** Risposta di Elayra in streaming: onDelta riceve i pezzi di testo man mano. */
   async streamElayraReply(
     turns: ChatTurn[],
-    opts: { nickname?: string | null; hasHistory?: boolean; onDelta: (text: string) => void; signal?: AbortSignal }
+    opts: {
+      nickname?: string | null;
+      hasHistory?: boolean;
+      onDelta: (text: string) => void;
+      signal?: AbortSignal;
+      model?: string;
+    }
   ): Promise<string> {
     const messages = normalizeTurns(turns);
     if (messages.length === 0) throw new HttpError(400, 'Nessun messaggio da inviare');
     const stream = anthropic().messages.stream(
       {
-        model: config.model,
+        model: opts.model || config.model,
         max_tokens: 600,
-        system: buildElayraSystemPrompt({ nickname: opts.nickname, hasHistory: opts.hasHistory }),
-        messages,
+        // La cache dei prompt fa pagare un decimo (o meno) le parti già lette: istruzioni e conversazione precedente.
+        system: [
+          {
+            type: 'text',
+            text: buildElayraSystemPrompt({ nickname: opts.nickname, hasHistory: opts.hasHistory }),
+            cache_control: { type: 'ephemeral' },
+          },
+        ],
+        messages: withCacheBreakpoint(messages),
       },
       { signal: opts.signal }
     );
@@ -72,7 +95,7 @@ export const aiService = {
       .join('\n')
       .slice(-24000);
     const message = await anthropic().messages.create({
-      model: config.model,
+      model: config.lightModel,
       max_tokens: 800,
       system:
         "Estrai una pagina di diario da una conversazione. Basati solo su ciò che l'utente ha scritto, senza interpretare né aggiungere. Scrivi in italiano.",
@@ -109,5 +132,90 @@ export const aiService = {
       contentSummary:
         typeof input.contentSummary === 'string' && input.contentSummary.trim() ? input.contentSummary.trim() : fallback,
     };
+  },
+  /**
+   * Valuta se nella conversazione c'è un progetto o un'idea creativa che la persona sta sviluppando.
+   * Restituisce una bozza di profilo per la Forgia, oppure null se non c'è (ancora) niente del genere.
+   */
+  async assessForge(turns: ChatTurn[]): Promise<ForgeDraft | null> {
+    const transcript = turns
+      .filter((t) => t.role === 'user')
+      .map((t) => `UTENTE: ${t.content}`)
+      .join('\n')
+      .slice(-16000);
+    if (!transcript.trim()) return null;
+    const message = await anthropic().messages.create({
+      model: config.lightModel,
+      max_tokens: 700,
+      system:
+        "Leggi i messaggi di una persona e stabilisci se sta sviluppando un progetto o un'idea creativa concreta (qualcosa che vuole costruire, scrivere, avviare). " +
+        'Non basta un desiderio vago o uno sfogo. Se il progetto c\'è, descrivilo in italiano usando solo ciò che la persona ha detto del progetto. ' +
+        'Nel riassunto non mettere MAI dettagli intimi: niente salute, famiglia, relazioni, soldi, stati d\'animo, luoghi o nomi di persone.',
+      tools: [
+        {
+          name: 'valuta_forgia',
+          description: 'Registra la valutazione.',
+          input_schema: {
+            type: 'object',
+            properties: {
+              has_project: { type: 'boolean', description: 'true solo se c\'è un progetto o un\'idea creativa concreta' },
+              topic: { type: 'string', description: 'Il progetto in poche parole, massimo 12' },
+              summary: { type: 'string', description: 'Due o tre frasi sul progetto, in terza persona neutra, senza dettagli personali' },
+              areas: { type: 'array', items: { type: 'string', enum: [...FORGE_AREAS] }, minItems: 1, maxItems: 3 },
+              project_type: { type: 'string', enum: [...FORGE_PROJECT_TYPES] },
+              style: { type: 'string', enum: [...FORGE_STYLES], description: 'Come comunica la persona' },
+            },
+            required: ['has_project'],
+          },
+        },
+      ],
+      tool_choice: { type: 'tool', name: 'valuta_forgia' },
+      messages: [{ role: 'user', content: transcript }],
+    });
+    const block = message.content.find((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use');
+    const input = (block?.input || {}) as Record<string, unknown>;
+    if (input.has_project !== true) return null;
+    return sanitizeDraft(input);
+  },
+  /**
+   * Elayra dentro una stanza della Forgia: aiuta due persone a organizzare il progetto comune.
+   * Riceve gli ultimi messaggi della stanza e la richiesta di chi l'ha chiamata.
+   */
+  async forgeRoomAssist(opts: {
+    topic: string;
+    transcript: { from: string; content: string }[];
+    request: string;
+    caller: string;
+  }): Promise<string> {
+    const lines = opts.transcript
+      .map((m) => `${m.from}: ${m.content}`)
+      .join('\n')
+      .slice(-20000);
+    const message = await anthropic().messages.create({
+      model: config.model,
+      max_tokens: 900,
+      system: [
+        {
+          type: 'text',
+          text:
+            'Sei Elayra, dentro uno spazio di lavoro condiviso da due persone che stanno costruendo un progetto insieme. ' +
+            'Qui non fai da presenza emotiva: aiuti in modo pratico a organizzare il lavoro, tenere traccia di decisioni e compiti, ' +
+            'riassumere, raccogliere e ordinare informazioni, proporre i prossimi passi. ' +
+            'Rispondi in italiano, in modo chiaro e breve. Puoi usare elenchi semplici con il trattino. ' +
+            'Usa solo ciò che è scritto nella stanza: non inventare fatti, numeri o fonti; se manca un dato, dillo. ' +
+            'Non hai accesso a internet né ai file caricati nell\'archivio.',
+          cache_control: { type: 'ephemeral' },
+        },
+      ],
+      messages: [
+        {
+          role: 'user',
+          content:
+            `Progetto in comune: ${opts.topic}\n\nUltimi messaggi della stanza:\n${lines || '(ancora nessun messaggio)'}\n\n` +
+            `${opts.caller} ti chiede: ${opts.request}`,
+        },
+      ],
+    });
+    return textOf(message);
   },
 };
