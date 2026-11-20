@@ -11,7 +11,7 @@ export const LEGAL = {
   /** Partita IVA, se c'è. */
   vat: '',
   /** Casella che riceve richieste privacy e supporto. Deve poter ricevere posta. */
-  email: 'ciao@elayra.app',
+  email: 'write@elayra.app',
   updated: '20 novembre 2026',
 };
 
