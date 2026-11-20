@@ -6,6 +6,13 @@ export const locales: Locale[] = ['en', 'it', 'zh'];
 
 export const translations: Record<Locale, TranslationMap> = {
   en: {
+    "liriaPopup.eyebrow": "The Forge’s software house",
+    "liriaPopup.lead": "Tell me what you want to build. I make it, publish it and keep it updated — starting from your words.",
+    "liriaPopup.point1": "Sites and small apps for your project, live in minutes.",
+    "liriaPopup.point2": "Elayra puts your ideas in order and sends them to me, after your yes.",
+    "liriaPopup.point3": "From the Part time plan: 5% off my subscription.",
+    "liriaPopup.never": "Don’t show again",
+    "liriaPopup.close": "Close",
     "onboarding.consentBefore": "I have read the",
     "onboarding.consentAnd": "and the",
     "onboarding.consentAfter": ", and I agree that Elayra processes what I share — including feelings and health — to offer me the service.",
@@ -666,6 +673,13 @@ export const translations: Record<Locale, TranslationMap> = {
     'auth.forgotPassword.backToSignIn': 'Back to Sign In',
   },
   it: {
+    "liriaPopup.eyebrow": "La softwarehouse della Forgia",
+    "liriaPopup.lead": "Dimmi cosa vuoi costruire. Lo realizzo, lo pubblico e lo tengo aggiornato — partendo dalle tue parole.",
+    "liriaPopup.point1": "Siti e piccole app per il tuo progetto, online in pochi minuti.",
+    "liriaPopup.point2": "Elayra mette in ordine le tue idee e me le manda, dopo il tuo sì.",
+    "liriaPopup.point3": "Dal piano Part time: 5% di sconto sul mio abbonamento.",
+    "liriaPopup.never": "Non mostrare più",
+    "liriaPopup.close": "Chiudi",
     "onboarding.consentBefore": "Ho letto i",
     "onboarding.consentAnd": "e l’informativa",
     "onboarding.consentAfter": ", e acconsento che Elayra tratti ciò che condivido — anche su emozioni e salute — per offrirmi il servizio.",
