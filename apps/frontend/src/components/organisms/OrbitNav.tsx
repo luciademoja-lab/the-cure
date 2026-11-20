@@ -17,7 +17,7 @@ const DOCK_MARGIN = 28;
 
 function ringDiameter(): number {
   if (typeof window === 'undefined') return 680;
-  return Math.round(Math.min(window.innerHeight * 0.8, window.innerWidth * 0.62, 720));
+  return Math.round(Math.min(window.innerHeight * 0.86, window.innerWidth * 0.62, 780));
 }
 
 export function OrbitNav() {
@@ -88,7 +88,7 @@ export function OrbitNav() {
     ? `translate(${homeX}px, ${homeY}px) scale(1)`
     : `translate(${dockX}px, ${dockY}px) scale(${scale})`;
 
-  const radius = diameter / 2 - 54;
+  const radius = diameter / 2 - 30;
   const style = { width: diameter, height: diameter, transform, '--orbit-radius': `${radius}px` } as CSSProperties;
 
   return (
