@@ -1,3 +1,5 @@
+import { currentLocale, type Locale } from './locale';
+
 /**
  * La Forgia: vocabolari chiusi usati per far incontrare le persone.
  * L'incontro si basa su aree in comune, tipo di progetto e stile comunicativo.
@@ -50,7 +52,11 @@ export function sanitizeDraft(input: Record<string, unknown>): ForgeDraft | null
   };
 }
 
-export const forgeInvitation = (topic: string) =>
-  `Da quello che mi racconti, stai dando forma a qualcosa: ${topic}.\n\n` +
-  'Esiste uno spazio, la Forgia, dove posso farti incontrare chi sta lavorando su cose vicine alle tue. ' +
-  'Se ti va, trovi il mio invito nella pagina Forgia: lì vedi cosa mostrerei di te e decidi tu se e cosa condividere.';
+export const forgeInvitation = (topic: string, locale: Locale = currentLocale()) =>
+  locale === 'en'
+    ? `From what you tell me, you are giving shape to something: ${topic}.\n\n` +
+      'There is a space, the Forge, where I can help you meet people working on things close to yours. ' +
+      'If you like, you will find my invitation on the Forge page: there you can see what I would share about you, and you decide if and what to share.'
+    : `Da quello che mi racconti, stai dando forma a qualcosa: ${topic}.\n\n` +
+      'Esiste uno spazio, la Forgia, dove posso farti incontrare chi sta lavorando su cose vicine alle tue. ' +
+      'Se ti va, trovi il mio invito nella pagina Forgia: lì vedi cosa mostrerei di te e decidi tu se e cosa condividere.';

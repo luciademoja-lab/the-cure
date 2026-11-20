@@ -1,8 +1,14 @@
+import { useTranslation } from '../../i18n/I18nProvider';
 import { Link } from 'react-router-dom';
 import { LEGAL, ownerLine } from '../../lib/legal';
 import { LegalPage, Mail } from './LegalPage';
 
 export function PrivacyPage() {
+  const { locale } = useTranslation();
+  return locale === 'it' ? <PrivacyPageIt /> : <PrivacyPageEn />;
+}
+
+function PrivacyPageIt() {
   return (
     <LegalPage title="Informativa sulla privacy">
       <p>
@@ -17,7 +23,7 @@ export function PrivacyPage() {
 
       <h2>2. Quali dati trattiamo</h2>
       <ul>
-        <li><strong>Account</strong>: email, nome che scegli, immagine del profilo, conferma di maggiore età, codice di invito, impostazioni della verifica in due passaggi.</li>
+        <li><strong>Account</strong>: email e nome del tuo account Google (l’accesso avviene solo con Google), nome che scegli, immagine del profilo, conferma di maggiore età, codice di invito, impostazioni della verifica in due passaggi.</li>
         <li><strong>Contenuti che scrivi o detti</strong>: conversazioni con Elayra, pagine di diario, rituali, risposte del Percorso, invito e messaggi della Forgia, documenti caricati nell’archivio dei progetti.</li>
         <li><strong>Dati di utilizzo</strong>: numero di risposte di Elayra usate nel mese, punti luce, livello, stelle e costellazioni del Collettivo.</li>
         <li><strong>Pagamenti</strong>: piano scelto, stato dell’abbonamento e identificativo cliente. I dati della carta li tratta solo Stripe: noi non li vediamo.</li>
@@ -34,7 +40,6 @@ export function PrivacyPage() {
         <li>Offrirti Elayra, il diario, i rituali, il Percorso, la Forgia e il Collettivo: esecuzione del contratto (art. 6.1.b) e, per i contenuti intimi, consenso esplicito (art. 9.2.a).</li>
         <li>Gestire pagamenti, fatture e obblighi fiscali: contratto e obbligo di legge (art. 6.1.b e 6.1.c).</li>
         <li>Proteggere gli account e prevenire abusi: legittimo interesse (art. 6.1.f).</li>
-        <li>Inviarti email di servizio (accesso, reimpostazione della password): contratto.</li>
       </ul>
       <p>Non vendiamo i tuoi dati, non facciamo pubblicità mirata e non usiamo le tue conversazioni per addestrare modelli.</p>
 
@@ -44,8 +49,7 @@ export function PrivacyPage() {
         <li><strong>Vercel</strong>: ospita il sito e il server di Elayra (funzioni a Parigi, rete di distribuzione globale).</li>
         <li><strong>Anthropic</strong>: elabora il testo per generare le risposte di Elayra. Può avvenire negli Stati Uniti, con le garanzie previste dal GDPR (clausole contrattuali standard). Secondo i suoi termini commerciali non usa questi contenuti per addestrare i modelli.</li>
         <li><strong>Stripe</strong>: pagamenti e fatturazione.</li>
-        <li><strong>Resend</strong>: invio delle email di servizio, su server nell’Unione Europea (Irlanda).</li>
-        <li><strong>Google</strong>: solo se scegli l’accesso con Google; inoltre, se usi la dettatura vocale in Chrome, l’audio è trascritto dal servizio di riconoscimento vocale del browser.</li>
+        <li><strong>Google</strong>: per l’accesso al tuo account; inoltre, se usi la dettatura vocale in Chrome, l’audio è trascritto dal servizio di riconoscimento vocale del browser.</li>
         <li><strong>Secretary Liria</strong>: riceve soltanto il brief di progetto che tu leggi, confermi e scegli di inviarle dalla Forgia.</li>
         <li><strong>L’altra persona della Forgia</strong>: vede solo il testo del tuo invito (che approvi prima) e ciò che scrivi o carichi nella vostra stanza.</li>
       </ul>
@@ -77,6 +81,83 @@ export function PrivacyPage() {
       <h2>9. Cookie</h2>
       <p>
         Usiamo solo strumenti tecnici necessari al funzionamento. Dettagli nella <Link to="/cookie">pagina cookie</Link>.
+      </p>
+    </LegalPage>
+  );
+}
+
+function PrivacyPageEn() {
+  return (
+    <LegalPage title="Privacy policy">
+      <p>
+        This policy explains which personal data {LEGAL.brand} ({LEGAL.site}) processes, why, who it is shared with and what
+        rights you have, under Regulation (EU) 2016/679 (GDPR).
+      </p>
+
+      <h2>1. Data controller</h2>
+      <p>
+        {ownerLine()}. Privacy contact: <Mail />.
+      </p>
+
+      <h2>2. What data we process</h2>
+      <ul>
+        <li><strong>Account</strong>: the email and name of your Google account (sign-in is with Google only), the name you choose, profile picture, confirmation that you are an adult, invitation code, two-step verification settings.</li>
+        <li><strong>Content you write or dictate</strong>: conversations with Elayra, journal pages, rituals, answers in the Path, Forge invitation and messages, documents uploaded to the project archive.</li>
+        <li><strong>Usage data</strong>: number of Elayra replies used in the month, light points, level, stars and constellations of the Collective.</li>
+        <li><strong>Payments</strong>: chosen plan, subscription status and customer identifier. Card details are handled only by Stripe: we never see them.</li>
+        <li><strong>Technical data</strong>: IP address and technical logs needed to run and protect the service.</li>
+      </ul>
+      <p>
+        What you write to Elayra may concern your health, your emotions or other intimate matters (“special categories of
+        data”, Art. 9 GDPR). We process them only because you choose to share them, on the basis of your explicit consent, and
+        only to provide the service.
+      </p>
+
+      <h2>3. Why, and on what legal basis</h2>
+      <ul>
+        <li>Providing Elayra, the journal, rituals, the Path, the Forge and the Collective: performance of the contract (Art. 6.1.b) and, for intimate content, explicit consent (Art. 9.2.a).</li>
+        <li>Managing payments, invoices and tax obligations: contract and legal obligation (Art. 6.1.b and 6.1.c).</li>
+        <li>Protecting accounts and preventing abuse: legitimate interest (Art. 6.1.f).</li>
+      </ul>
+      <p>We do not sell your data, we do not do targeted advertising and we do not use your conversations to train models.</p>
+
+      <h2>4. Who we share it with (processors)</h2>
+      <ul>
+        <li><strong>Supabase</strong>: database, authentication and file storage, on servers in the European Union (Paris).</li>
+        <li><strong>Vercel</strong>: hosts the website and Elayra’s server (functions in Paris, global delivery network).</li>
+        <li><strong>Anthropic</strong>: processes text to generate Elayra’s replies. This may happen in the United States, with the safeguards required by the GDPR (standard contractual clauses). Under its commercial terms it does not use this content to train models.</li>
+        <li><strong>Stripe</strong>: payments and invoicing.</li>
+        <li><strong>Google</strong>: to sign you in; also, if you use voice dictation in Chrome, the audio is transcribed by the browser’s speech recognition service.</li>
+        <li><strong>Secretary Liria</strong>: receives only the project brief that you read, confirm and choose to send her from the Forge.</li>
+        <li><strong>The other person in the Forge</strong>: sees only the text of your invitation (which you approve first) and what you write or upload in your shared room.</li>
+      </ul>
+
+      <h2>5. How long</h2>
+      <p>
+        We keep data while your account is active. If you ask for deletion, we delete your account and content within 30
+        days; we keep only the data the law requires us to keep (for example tax records of payments, for up to 10 years).
+      </p>
+
+      <h2>6. Security</h2>
+      <p>
+        Access requires two-step verification. Data is encrypted in transit and protected by rules that make it readable only
+        by your account. Profile pictures and documents are kept in private storage.
+      </p>
+
+      <h2>7. Your rights</h2>
+      <p>
+        At any time you can ask for access, correction, deletion, restriction or portability of your data, object to
+        processing and withdraw consent (without affecting what was done before). Write to <Mail />: we reply within one
+        month. You can also lodge a complaint with the Italian Data Protection Authority (garanteprivacy.it) or with the
+        authority of the country where you live.
+      </p>
+
+      <h2>8. Age</h2>
+      <p>Elayra is only for adults (18 or older).</p>
+
+      <h2>9. Cookies</h2>
+      <p>
+        We only use technical tools needed for the service to work. Details on the <Link to="/cookie">cookie page</Link>.
       </p>
     </LegalPage>
   );

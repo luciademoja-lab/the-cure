@@ -4,12 +4,17 @@ import { useTranslation } from '../i18n/I18nProvider';
 import { apiPost } from '../lib/api';
 import { PlanId, useAccount } from '../contexts/AccountContext';
 
-const euro = (cents: number) => (cents / 100).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
-const date = (iso: string) => new Date(iso).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
+const tag = (locale: string) => (locale === 'it' ? 'it-IT' : 'en-GB');
+const euroIn = (locale: string) => (cents: number) =>
+  (cents / 100).toLocaleString(tag(locale), { style: 'currency', currency: 'EUR' });
+const dateIn = (locale: string) => (iso: string) =>
+  new Date(iso).toLocaleDateString(tag(locale), { day: 'numeric', month: 'long', year: 'numeric' });
 
 /** Piani, uso del mese e abbonamento. Il pagamento avviene sulla pagina sicura di Stripe. */
 export function PlansPage() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const euro = euroIn(locale);
+  const date = dateIn(locale);
   const { account, refresh } = useAccount();
   const [params] = useSearchParams();
   const [busy, setBusy] = useState<string | null>(null);
@@ -63,7 +68,7 @@ export function PlansPage() {
 
       <section className="card forge-card plans-usage">
         <p>
-          {t('plans.current')} <strong>{account.plans.find((p) => p.id === current)?.name}</strong>
+          {t('plans.current')} <strong>{t(`plan.name.${current}`)}</strong>
         </p>
         <div className="path-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} aria-label={t('plans.usageLabel')}>
           <div className="path-bar-fill" style={{ width: `${percent}%` }} />
@@ -72,7 +77,7 @@ export function PlansPage() {
         {account.subscription?.sponsored_by && <p className="path-next">{t('plans.sponsored')}</p>}
         {account.grants.map((g) => (
           <p key={`${g.plan}-${g.ends_at}`} className="path-next">
-            {t('plans.grant', { plan: account.plans.find((p) => p.id === g.plan)?.name || g.plan, date: date(g.ends_at) })}
+            {t('plans.grant', { plan: t(`plan.name.${g.plan}`), date: date(g.ends_at) })}
           </p>
         ))}
         {hasSubscription && !account.subscription?.sponsored_by && (
@@ -87,7 +92,7 @@ export function PlansPage() {
           const isCurrent = plan.id === current;
           return (
             <li key={plan.id} className={`card plan-card ${isCurrent ? 'current' : ''}`}>
-              <h2>{plan.name}</h2>
+              <h2>{t(`plan.name.${plan.id}`)}</h2>
               <p className="plan-price">
                 {plan.priceCents === 0 ? t('plans.free') : <>{euro(plan.priceCents)}<span>{t('plans.perMonth')}</span></>}
               </p>

@@ -46,13 +46,13 @@ describe('Navbar', () => {
 
   it('renders the brand name', () => {
     renderWithProviders(<Navbar />);
-    expect(screen.getByRole('link', { name: 'Login' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Sign in' })).toBeInTheDocument();
   });
 
   it('renders all navigation links', () => {
     renderWithProviders(<Navbar />);
-    expect(screen.getByRole('link', { name: 'Login' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Sign Up' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Sign in' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Sign up' })).toBeInTheDocument();
   });
 
   it('marks the home link as active on landing page', () => {

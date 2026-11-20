@@ -8,11 +8,40 @@ export class ApiError extends Error {
   }
 }
 
+/** Lingua scelta nell'app (la stessa che salva I18nProvider): il server risponde in questa lingua. */
+function appLocale(): 'it' | 'en' {
+  try {
+    return window.localStorage.getItem('locale') === 'it' ? 'it' : 'en';
+  } catch {
+    return 'en';
+  }
+}
+
+const MESSAGES = {
+  it: {
+    session: 'Sessione scaduta. Accedi di nuovo.',
+    offline: 'Non riesco a raggiungere il server. Controlla la connessione.',
+    generic: 'Qualcosa non ha funzionato. Riprova tra poco.',
+    interrupted: 'La risposta si è interrotta. Riprova.',
+    empty: 'Risposta vuota dal server.',
+    elayraDown: 'Elayra non riesce a rispondere in questo momento.',
+  },
+  en: {
+    session: 'Your session has expired. Please sign in again.',
+    offline: 'I can’t reach the server. Please check your connection.',
+    generic: 'Something didn’t work. Please try again in a moment.',
+    interrupted: 'The reply was interrupted. Please try again.',
+    empty: 'Empty reply from the server.',
+    elayraDown: 'Elayra can’t reply right now.',
+  },
+};
+const msg = (key: keyof (typeof MESSAGES)['en']) => MESSAGES[appLocale()][key];
+
 async function authHeaders(): Promise<Record<string, string>> {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
-  if (!token) throw new ApiError(401, 'Sessione scaduta. Accedi di nuovo.');
-  return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+  if (!token) throw new ApiError(401, msg('session'));
+  return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', 'Accept-Language': appLocale() };
 }
 
 async function request(path: string, init: RequestInit = {}): Promise<Response> {
@@ -21,10 +50,10 @@ async function request(path: string, init: RequestInit = {}): Promise<Response> 
   try {
     res = await fetch(`${API_URL}${path}`, { ...init, headers: { ...headers, ...(init.headers || {}) } });
   } catch {
-    throw new ApiError(0, 'Non riesco a raggiungere il server. Controlla la connessione.');
+    throw new ApiError(0, msg('offline'));
   }
   if (!res.ok) {
-    let message = 'Qualcosa non ha funzionato. Riprova tra poco.';
+    let message = msg('generic');
     try {
       const body = await res.json();
       if (body?.error) message = body.error;
@@ -62,7 +91,7 @@ export async function streamChat(
   opts: { onDelta: (text: string) => void; onNote?: (content: string) => void; signal?: AbortSignal }
 ): Promise<string> {
   const res = await request('/api/chat', { method: 'POST', body: JSON.stringify({ content }), signal: opts.signal });
-  if (!res.body) throw new ApiError(0, 'Risposta vuota dal server.');
+  if (!res.body) throw new ApiError(0, msg('empty'));
 
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
@@ -89,7 +118,7 @@ export async function streamChat(
       // Un messaggio in più di Elayra, fuori dalla risposta (es. l'invito alla Forgia).
       if (typeof payload.content === 'string') opts.onNote?.(payload.content);
     } else if (event === 'error') {
-      throw new ApiError(502, payload.message || 'Elayra non riesce a rispondere in questo momento.');
+      throw new ApiError(502, payload.message || msg('elayraDown'));
     }
   };
 
@@ -105,6 +134,6 @@ export async function streamChat(
     }
   }
   if (buffer.trim()) handle(buffer);
-  if (!finished) throw new ApiError(0, 'La risposta si è interrotta. Riprova.');
+  if (!finished) throw new ApiError(0, msg('interrupted'));
   return full;
 }

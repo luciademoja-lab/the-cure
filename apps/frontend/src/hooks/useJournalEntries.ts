@@ -24,7 +24,7 @@ export function useJournalEntries(userId?: string) {
         }
       })
       .catch((e) => {
-        if (active) setError(e instanceof Error ? e.message : 'Errore');
+        if (active) setError(e instanceof Error ? e.message : '…');
       })
       .finally(() => {
         if (active) setIsLoading(false);

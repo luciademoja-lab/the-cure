@@ -12,7 +12,8 @@ export const LEGAL = {
   vat: '',
   /** Casella che riceve richieste privacy e supporto. Deve poter ricevere posta. */
   email: 'write@elayra.app',
-  updated: '20 novembre 2026',
+  /** Data dell'ultimo aggiornamento delle pagine legali (AAAA-MM-GG). */
+  updated: '2026-11-21',
 };
 
 export const ownerLine = () =>

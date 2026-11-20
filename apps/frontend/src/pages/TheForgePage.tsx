@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { areaLabel } from '../lib/forgeLabels';
 import { useTranslation } from '../i18n/I18nProvider';
 import { apiGet, apiPost } from '../lib/api';
 import { supabase } from '../lib/supabase';
@@ -32,7 +33,7 @@ type RoomMessage = { id: string; from: 'me' | 'them' | 'elayra'; content: string
  * e solo dopo il suo sì si cercano incontri. La stanza privata si apre quando accettano entrambi.
  */
 export function TheForge() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [state, setState] = useState<ForgeState | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -153,7 +154,7 @@ export function TheForge() {
                 aria-pressed={areas.includes(area)}
                 onClick={() => toggleArea(area)}
               >
-                {area}
+                {areaLabel(locale, area)}
               </button>
             ))}
           </fieldset>
@@ -185,7 +186,7 @@ export function TheForge() {
             <h2>{t('forge.activeTitle')}</h2>
             <h3>{profile.topic}</h3>
             <p>{profile.summary}</p>
-            <p className="forge-tags">{profile.areas.join(' · ')}</p>
+            <p className="forge-tags">{profile.areas.map((a) => areaLabel(locale, a)).join(' · ')}</p>
             <div className="forge-actions">
               <button
                 type="button"
@@ -587,7 +588,7 @@ function ForgeMission() {
 }
 
 function RoomPaywall({ matchId, partner }: { matchId: string; partner: string }) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const { account } = useAccount();
   const [duoPlan, setDuoPlan] = useState<PlanId>('forgia');
   const [busy, setBusy] = useState(false);
@@ -623,12 +624,12 @@ function RoomPaywall({ matchId, partner }: { matchId: string; partner: string })
           <select id="duo-plan" value={duoPlan} onChange={(e) => setDuoPlan(e.target.value as PlanId)}>
             {paid.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name} — {(p.priceCents / 100).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })}
+                {t(`plan.name.${p.id}`)} — {(p.priceCents / 100).toLocaleString(locale === 'it' ? 'it-IT' : 'en-GB', { style: 'currency', currency: 'EUR' })}
               </option>
             ))}
           </select>
           <button type="button" className="cta-button secondary" disabled={busy} onClick={() => checkout({ plan: duoPlan, sponsorMatchId: matchId })}>
-            {t('forge.paywall.duo', { total: duoTotal.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' }) })}
+            {t('forge.paywall.duo', { total: duoTotal.toLocaleString(locale === 'it' ? 'it-IT' : 'en-GB', { style: 'currency', currency: 'EUR' }) })}
           </button>
         </div>
       </div>
