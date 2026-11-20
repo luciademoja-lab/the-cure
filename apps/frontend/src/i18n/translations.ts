@@ -195,6 +195,7 @@ export const translations: Record<Locale, TranslationMap> = {
 
     'landing.title': 'You do not need to know what to write. Start from how you feel.',
     'landing.start': 'Start',
+    'landing.getStarted': 'Get started',
     'landing.subtitle': '1 minute. No judgement.',
 
     'checkin.title': 'How are you feeling now?',
@@ -709,6 +710,7 @@ export const translations: Record<Locale, TranslationMap> = {
 
     'landing.title': 'Non devi sapere cosa scrivere.',
     'landing.start': 'Inizia',
+    'landing.getStarted': 'Inizia ora',
     'landing.subtitle': 'Parti da come ti senti. Nessun giudizio.',
 
     'checkin.title': 'Come ti senti adesso?',

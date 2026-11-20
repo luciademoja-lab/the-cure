@@ -11,13 +11,21 @@ import { useTranslation } from '../../i18n/I18nProvider';
  * - Tornando in home, si riespande attorno al testo.
  */
 
-const NAVBAR_HEIGHT = 72; // il testo della home è centrato nello spazio sotto la barra
 const DOCK_SIZE = 84; // diametro del piccolo astro in basso a sinistra
-const DOCK_MARGIN = 28;
+const DOCK_MARGIN = 24;
+const MOBILE = 900;
 
+function navbarHeight(): number {
+  if (typeof document === 'undefined') return 72;
+  return document.querySelector('.navbar')?.getBoundingClientRect().height || 72;
+}
+
+/** Il cerchio lascia spazio sotto per il sottotitolo della home. */
 function ringDiameter(): number {
   if (typeof window === 'undefined') return 680;
-  return Math.round(Math.min(window.innerHeight * 0.86, window.innerWidth * 0.62, 780));
+  const room = window.innerHeight - navbarHeight();
+  const widthShare = window.innerWidth < MOBILE ? 0.92 : 0.62;
+  return Math.round(Math.min(room * 0.78, window.innerWidth * widthShare, 780));
 }
 
 export function OrbitNav() {
@@ -26,7 +34,9 @@ export function OrbitNav() {
   const navigate = useNavigate();
   const [diameter, setDiameter] = useState(ringDiameter);
   const [viewport, setViewport] = useState(() =>
-    typeof window === 'undefined' ? { w: 1280, h: 800 } : { w: window.innerWidth, h: window.innerHeight }
+    typeof window === 'undefined'
+      ? { w: 1280, h: 800, nav: 72 }
+      : { w: window.innerWidth, h: window.innerHeight, nav: navbarHeight() }
   );
   const [paused, setPaused] = useState(false);
   const [open, setOpen] = useState(false);
@@ -47,11 +57,17 @@ export function OrbitNav() {
   useEffect(() => {
     const onResize = () => {
       setDiameter(ringDiameter());
-      setViewport({ w: window.innerWidth, h: window.innerHeight });
+      setViewport({ w: window.innerWidth, h: window.innerHeight, nav: navbarHeight() });
     };
+    onResize(); // la barra è già disegnata: misura la sua altezza vera
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
+
+  // Il titolo della home si centra con lo stesso calcolo del cerchio.
+  useEffect(() => {
+    document.documentElement.style.setProperty('--nav-h', `${viewport.nav}px`);
+  }, [viewport.nav]);
 
   // Cambiando pagina: la tendina si chiude e il cerchio riparte.
   useEffect(() => {
@@ -71,6 +87,13 @@ export function OrbitNav() {
     closeTimer.current = window.setTimeout(() => setOpen(false), 350);
   };
 
+  // Al tocco (telefono) l'astro apre e chiude la tendina.
+  const toggleMenu = () => {
+    if (isHome) return;
+    window.clearTimeout(closeTimer.current);
+    setOpen((v) => !v);
+  };
+
   const go = (path: string) => {
     setPaused(false);
     setOpen(false);
@@ -79,7 +102,7 @@ export function OrbitNav() {
 
   // Posizione e scala del cerchio: al centro della home, oppure piccolissimo in basso a sinistra.
   const homeX = viewport.w / 2 - diameter / 2;
-  const homeY = NAVBAR_HEIGHT + (viewport.h - NAVBAR_HEIGHT) / 2 - diameter / 2;
+  const homeY = viewport.nav + ((viewport.h - viewport.nav) * 0.92) / 2 - diameter / 2;
   const dockCenter = DOCK_MARGIN + DOCK_SIZE / 2;
   const dockX = dockCenter - diameter / 2;
   const dockY = viewport.h - dockCenter - diameter / 2;
@@ -88,16 +111,26 @@ export function OrbitNav() {
     ? `translate(${homeX}px, ${homeY}px) scale(1)`
     : `translate(${dockX}px, ${dockY}px) scale(${scale})`;
 
-  const radius = diameter / 2 - 30;
-  const style = { width: diameter, height: diameter, transform, '--orbit-radius': `${radius}px` } as CSSProperties;
+  const small = viewport.w < MOBILE;
+  const radius = diameter / 2 - (small ? 22 : 30);
+  // Le scintille nello stato ridotto devono restare di circa 8px qualunque sia la grandezza del cerchio.
+  const sparkScale = (8 / 10) / (DOCK_SIZE / diameter);
+  const style = {
+    width: diameter,
+    height: diameter,
+    transform,
+    '--orbit-radius': `${radius}px`,
+    '--spark-scale': sparkScale,
+  } as CSSProperties;
 
   return (
     <>
       <div
         className={`orbit ${isHome ? 'orbit--home' : 'orbit--dock'} ${paused ? 'orbit--paused' : ''} ${open ? 'orbit--open' : ''}`}
         style={style}
-        onMouseEnter={openMenu}
-        onMouseLeave={closeMenu}
+        onMouseEnter={small ? undefined : openMenu}
+        onMouseLeave={small ? undefined : closeMenu}
+        onClick={isHome ? undefined : toggleMenu}
         aria-hidden={!isHome}
       >
         <div className="orbit-halo" />
@@ -135,8 +168,8 @@ export function OrbitNav() {
         <nav
           className={`orbit-dropdown ${open ? 'is-open' : ''}`}
           aria-label={t('nav.home')}
-          onMouseEnter={openMenu}
-          onMouseLeave={closeMenu}
+          onMouseEnter={small ? undefined : openMenu}
+          onMouseLeave={small ? undefined : closeMenu}
           style={{ left: DOCK_MARGIN, bottom: DOCK_MARGIN + DOCK_SIZE + 10 }}
         >
           <button type="button" className="orbit-dropdown-link" onClick={() => go('/')}>
