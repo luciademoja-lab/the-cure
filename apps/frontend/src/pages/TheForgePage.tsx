@@ -3,6 +3,7 @@ import { useTranslation } from '../i18n/I18nProvider';
 import { apiGet, apiPost } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { PlanId, planOf, useAccount } from '../contexts/AccountContext';
+import { LiriaPopup } from '../components/organisms/LiriaPopup';
 
 type ForgeProfile = {
   topic: string;
@@ -97,6 +98,7 @@ export function TheForge() {
 
   return (
     <main className="page-shell forge-page">
+      <LiriaPopup />
       <h1>{t('forge.title')}</h1>
       {!hasForge && <ForgeMission />}
       {hasForge && <ProjectFolderGuide />}
