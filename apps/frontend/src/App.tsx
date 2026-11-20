@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { Navbar } from './components/organisms/Navbar';
+import { OrbitNav } from './components/organisms/OrbitNav';
 import { LandingPage } from './pages/LandingPage';
 import { JournalPage } from './pages/JournalPage';
 import { DailyLightPracticePage } from './pages/DailyLightPracticePage';
@@ -21,6 +22,7 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Navbar />
+        <OrbitNav />
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
