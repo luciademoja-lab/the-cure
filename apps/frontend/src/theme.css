@@ -1464,13 +1464,21 @@ a {
 /* ── Home: titolo nel cerchio, pulsante sotto il marchio, sottotitolo sotto il cerchio ── */
 .landing-page {
   position: relative;
-  min-height: calc(100vh - var(--nav-h, 72px));
+  height: calc(var(--app-h, 100vh) - var(--nav-h, 72px));
+  min-height: 0;
   padding: 0;
   display: block;
+  overflow: hidden;
+}
+html.is-home,
+html.is-home body {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 .landing-cta {
-  position: absolute;
-  top: 1.25rem;
+  position: fixed;
+  top: calc(var(--nav-h, 72px) + 1.25rem);
   left: max(1.5rem, calc((100vw - 1180px) / 2 + 1.5rem));
   z-index: 92;
 }
@@ -1480,7 +1488,7 @@ a {
 .landing-content {
   position: fixed;
   left: 50%;
-  top: calc(var(--nav-h, 72px) + (100vh - var(--nav-h, 72px)) * 0.46);
+  top: var(--orbit-cy, calc(var(--nav-h, 72px) + (100vh - var(--nav-h, 72px)) * 0.46));
   transform: translate(-50%, -50%);
   width: min(380px, 52vw);
   max-width: none;
@@ -1511,7 +1519,7 @@ a {
     padding: 0.5rem 0.3rem;
   }
   .landing-cta {
-    top: 1rem;
+    top: calc(var(--nav-h, 72px) + 1rem);
     left: 1.25rem;
   }
   .landing-content {
@@ -2179,7 +2187,11 @@ a {
   transform: translateX(-50%);
   z-index: 91;
   display: flex;
-  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.3rem 1rem;
+  width: max-content;
+  max-width: calc(100vw - 2rem);
   white-space: nowrap;
   font-size: 0.72rem;
   letter-spacing: 0.08em;

@@ -64,10 +64,20 @@ export function OrbitNav() {
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
-  // Il titolo della home si centra con lo stesso calcolo del cerchio.
+  // Il titolo e la home usano le stesse misure del cerchio, prese dallo schermo visibile
+  // (su telefono 100vh conta anche lo spazio della barra del browser e sposterebbe il testo).
   useEffect(() => {
-    document.documentElement.style.setProperty('--nav-h', `${viewport.nav}px`);
-  }, [viewport.nav]);
+    const root = document.documentElement.style;
+    root.setProperty('--nav-h', `${viewport.nav}px`);
+    root.setProperty('--app-h', `${viewport.h}px`);
+    root.setProperty('--orbit-cy', `${viewport.nav + ((viewport.h - viewport.nav) * 0.92) / 2}px`);
+  }, [viewport.nav, viewport.h]);
+
+  // La home è un'unica schermata: non scorre.
+  useEffect(() => {
+    document.documentElement.classList.toggle('is-home', isHome);
+    return () => document.documentElement.classList.remove('is-home');
+  }, [isHome]);
 
   // Cambiando pagina: la tendina si chiude e il cerchio riparte.
   useEffect(() => {
