@@ -17,6 +17,9 @@ export const config = {
   supabaseSecretKey: process.env.SUPABASE_SECRET_KEY || '',
 
   stripeSecretKey: process.env.STRIPE_SECRET_KEY || '',
+  // Secretary Liria: dove arrivano i brief e il codice sconto del 5% (Part time in su).
+  liriaEmail: process.env.LIRIA_EMAIL || 'Liria@SecretaryLiria.com',
+  liriaDiscountCode: process.env.LIRIA_DISCOUNT_CODE || '',
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
 
   allowedOrigins: (process.env.ALLOWED_ORIGINS || 'http://localhost:4173')

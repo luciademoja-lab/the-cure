@@ -218,4 +218,40 @@ export const aiService = {
     });
     return textOf(message);
   },
+
+  /**
+   * Il brief per Secretary Liria: Elayra mette in ordine ciò che le due persone hanno deciso nella stanza,
+   * così Liria può costruire e pubblicare il sito o l'app. Solo fatti presenti nella stanza.
+   */
+  async liriaBrief(opts: { topic: string; transcript: { from: string; content: string }[]; notes: string }): Promise<string> {
+    const lines = opts.transcript
+      .map((m) => `${m.from}: ${m.content}`)
+      .join('\n')
+      .slice(-24000);
+    const message = await anthropic().messages.create({
+      model: config.model,
+      max_tokens: 1400,
+      system: [
+        {
+          type: 'text',
+          text:
+            "Sei Elayra. Prepari un brief per Secretary Liria, che costruisce, pubblica e aggiorna siti e piccole app a partire da richieste scritte. " +
+            'Scrivi in italiano, in testo semplice, con queste sezioni nell\'ordine, ognuna con un titolo in maiuscolo seguito da due punti: ' +
+            'PROGETTO, OBIETTIVO, PER CHI, COSA COSTRUIRE (pagine e funzioni, con il trattino), CONTENUTI GIÀ PRONTI, STILE E TONO, DOMANDE APERTE. ' +
+            'Usa solo ciò che è scritto nella stanza e nelle note: non inventare nomi, prezzi, dati o contenuti. ' +
+            'Se un\'informazione manca, scrivilo in DOMANDE APERTE. Niente saluti, niente firma: solo il brief.',
+          cache_control: { type: 'ephemeral' },
+        },
+      ],
+      messages: [
+        {
+          role: 'user',
+          content:
+            `Progetto in comune: ${opts.topic}\n\nMessaggi della stanza:\n${lines || '(ancora nessun messaggio)'}\n\n` +
+            `Note aggiunte da chi chiede il brief: ${opts.notes || '(nessuna)'}`,
+        },
+      ],
+    });
+    return textOf(message);
+  },
 };

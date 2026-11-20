@@ -251,10 +251,15 @@ export function createApp() {
       const referral = typeof req.body?.referralCode === 'string' ? req.body.referralCode.trim().slice(0, 16) : '';
       if (nickname.length < 2) throw new HttpError(400, 'Scrivi come vuoi essere chiamata o chiamato');
       if (!Number.isInteger(age) || age < 18 || age > 120) throw new HttpError(400, 'Per usare Elayra devi avere almeno 18 anni');
+      if (req.body?.consent !== true) {
+        throw new HttpError(400, 'Per continuare serve il tuo consenso a termini e privacy');
+      }
       await db(req.user, 'rpc/complete_onboarding', {
         method: 'POST',
         body: { p_nickname: nickname, p_age: age, p_referral: referral || null },
       });
+      // Il consenso esplicito (art. 9 GDPR) resta registrato con la data.
+      await adminDb(`profiles?id=eq.${req.user.id}`, { method: 'PATCH', body: { consented_at: new Date().toISOString() } });
       res.status(204).end();
     })
   );
@@ -752,6 +757,78 @@ export function createApp() {
         prefer: 'return=representation',
       });
       res.status(201).json({ message: { id: data[0].id, from: 'elayra', content: data[0].content, createdAt: data[0].created_at } });
+    })
+  );
+
+  // ── Secretary Liria: la softwarehouse della Forgia ─────────────────────
+
+  app.get(
+    '/api/forge/liria',
+    requireAuth,
+    route(async (req, res) => {
+      const account = await loadAccount(req.user);
+      const eligible = Boolean(account.plan.forgeElayra);
+      res.json({
+        eligible,
+        email: config.liriaEmail,
+        // Il codice sconto si vede solo dal piano Part time in su.
+        discountCode: eligible ? config.liriaDiscountCode || null : null,
+      });
+    })
+  );
+
+  // Elayra mette in ordine la stanza in un brief per Liria; la persona lo legge e lo corregge prima di inviarlo.
+  app.post(
+    '/api/forge/matches/:id/liria/brief',
+    requireAuth,
+    route(async (req, res) => {
+      if (!UUID.test(req.params.id)) throw new HttpError(400, 'Identificativo non valido');
+      const notes = typeof req.body?.notes === 'string' ? req.body.notes.trim().slice(0, 2000) : '';
+      const account = await loadAccount(req.user);
+      if (!account.plan.forgeElayra) {
+        throw new HttpError(402, 'Il brief per Liria è incluso dal piano Part time in su.');
+      }
+      requireQuota(account);
+      const { match } = await roomPartner(req.user, req.params.id);
+      const { data: recent } = await db<ForgeMessageRow[]>(
+        req.user,
+        `forge_messages?select=id,sender_id,role,content,created_at&match_id=eq.${req.params.id}&order=created_at.desc&limit=120`
+      );
+      const me = account.nickname || 'Io';
+      const other = match.other_nickname || 'L’altra persona';
+      const transcript = (recent || []).reverse().map((m) => ({
+        from: m.role === 'elayra' ? 'Elayra' : m.sender_id === req.user.id ? me : other,
+        content: m.content,
+      }));
+      const brief = await aiService.liriaBrief({ topic: match.topic, transcript, notes });
+      await recordUsage(req.user, 'forge', config.model);
+      res.json({ brief, email: config.liriaEmail, subject: `Elayra · ${match.topic}`.slice(0, 120) });
+    })
+  );
+
+  // Il brief confermato resta nella stanza, così anche l'altra persona sa cosa è stato chiesto a Liria.
+  app.post(
+    '/api/forge/matches/:id/liria/confirm',
+    requireAuth,
+    route(async (req, res) => {
+      if (!UUID.test(req.params.id)) throw new HttpError(400, 'Identificativo non valido');
+      const brief = typeof req.body?.brief === 'string' ? req.body.brief.trim() : '';
+      if (!brief) throw new HttpError(400, 'Il brief è vuoto');
+      if (brief.length > 8000) throw new HttpError(413, 'Il brief è troppo lungo');
+      const account = await loadAccount(req.user);
+      if (!account.plan.forgeElayra) throw new HttpError(402, 'Il brief per Liria è incluso dal piano Part time in su.');
+      await roomPartner(req.user, req.params.id);
+      const who = account.nickname || 'Una di voi';
+      await adminDb('forge_messages', {
+        method: 'POST',
+        body: {
+          match_id: req.params.id,
+          sender_id: null,
+          role: 'elayra',
+          content: `${who} ha confermato questo brief per Secretary Liria:\n\n${brief}`,
+        },
+      });
+      res.status(201).json({ ok: true });
     })
   );
 

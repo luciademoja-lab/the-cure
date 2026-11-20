@@ -17,6 +17,12 @@ import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { PlansPage } from './pages/PlansPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { FaqPage } from './pages/FaqPage';
+import { PrivacyPage } from './pages/legal/PrivacyPage';
+import { TermsPage } from './pages/legal/TermsPage';
+import { CookiePage } from './pages/legal/CookiePage';
+import { DisclaimerPage } from './pages/legal/DisclaimerPage';
+import { Footer } from './components/organisms/Footer';
 
 function App() {
   return (
@@ -65,6 +71,11 @@ function App() {
               <ProfilePage />
             </ProtectedRoute>
           } />
+          <Route path="/faq" element={<FaqPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/termini" element={<TermsPage />} />
+          <Route path="/cookie" element={<CookiePage />} />
+          <Route path="/disclaimer" element={<DisclaimerPage />} />
           <Route path="/contatti" element={<Contatti />} />
           <Route path="/gaming" element={
             <ProtectedRoute>
@@ -72,6 +83,7 @@ function App() {
             </ProtectedRoute>
           } />
         </Routes>
+        <Footer />
       </BrowserRouter>
     </AuthProvider>
   );

@@ -95,8 +95,13 @@ describe('SecurityGate — 2FA obbligatoria e primo accesso', () => {
     await user.clear(screen.getByLabelText('Age'));
     await user.type(screen.getByLabelText('Age'), '34');
     await user.click(screen.getByRole('button', { name: 'Start' }));
+    // Senza il consenso a termini e privacy non si entra.
+    expect(await screen.findByText('To continue, tick your consent to the terms and privacy.')).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await user.click(screen.getByRole('checkbox'));
+    await user.click(screen.getByRole('button', { name: 'Start' }));
     await waitFor(() => expect(screen.getByText('contenuto protetto')).toBeInTheDocument());
     const call = fetchMock.mock.calls.find(([url]) => url === '/api/onboarding');
-    expect(JSON.parse(call![1].body)).toMatchObject({ nickname: 'Ada', age: 34 });
+    expect(JSON.parse(call![1].body)).toMatchObject({ nickname: 'Ada', age: 34, consent: true });
   });
 });
