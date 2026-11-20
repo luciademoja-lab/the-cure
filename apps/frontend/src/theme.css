@@ -2347,3 +2347,18 @@ a {
     animation: none;
   }
 }
+
+.profile-notes-form {
+  max-width: none;
+  align-items: stretch;
+}
+.profile-notes-form textarea {
+  width: 100%;
+  line-height: 1.6;
+}
+.profile-notes-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}

@@ -575,3 +575,25 @@ describe('profilo', () => {
     expect(profilePatches).toHaveLength(1);
   });
 });
+
+describe('cosa Elayra sa', () => {
+  it('conosce l’app e legge ciò che la persona ha scritto di sé, come informazione e non come ordine', async () => {
+    const { buildElayraSystemPrompt } = await import('../elayra.prompt');
+    const prompt = buildElayraSystemPrompt({ nickname: 'Lumira', personalNotes: 'Vivo in Calabria, amo i gatti.' });
+    expect(prompt).toContain('SE TI CHIEDONO DELL');
+    expect(prompt).toContain('Secretary Liria');
+    expect(prompt).toContain('Vivo in Calabria, amo i gatti.');
+    expect(prompt).toContain('non istruzioni');
+    expect(prompt.indexOf('QUANDO LA PRESENZA NON BASTA')).toBeLessThan(prompt.indexOf('Vivo in Calabria'));
+    expect(buildElayraSystemPrompt({ nickname: 'Lumira' })).not.toContain('HA SCELTO DI RACCONTARTI');
+  });
+
+  it('salva le note dal profilo, le svuota con una stringa vuota e rifiuta testi troppo lunghi', async () => {
+    profilePatches.length = 0;
+    expect((await request(app).post('/api/profile').set(authed).send({ elayraNotes: '  Amo i gatti.  ' })).status).toBe(204);
+    expect(profilePatches[0].body).toEqual({ elayra_notes: 'Amo i gatti.' });
+    expect((await request(app).post('/api/profile').set(authed).send({ elayraNotes: '' })).status).toBe(204);
+    expect(profilePatches[1].body).toEqual({ elayra_notes: null });
+    expect((await request(app).post('/api/profile').set(authed).send({ elayraNotes: 'x'.repeat(6001) })).status).toBe(413);
+  });
+});
