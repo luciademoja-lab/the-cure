@@ -91,6 +91,7 @@ export function EntryEditor({ onFinish }: EntryEditorProps) {
             });
           }
         },
+        onNote: (text) => setMessages((prev) => [...prev, { role: 'assistant', content: text }]),
       });
     } catch (e) {
       const message = e instanceof Error ? e.message : t('chat.error.generic');

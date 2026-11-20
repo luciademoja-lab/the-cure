@@ -4,11 +4,13 @@ import { findSynchronicMatches } from '../services/synchronicityService';
 import { SynchronicityMatchCard } from '../components/SynchronicityMatchCard';
 import { SynchronicMatch } from '../types/synchronicity';
 import { useTranslation } from '../i18n/I18nProvider';
+import { useAuth } from '../contexts/AuthContext';
 import '../styles/pages/SynchronicitiesPage.css';
 
 export function SynchronicitiesPage() {
   const { t } = useTranslation();
-  const { entries } = useJournalEntries();
+  const { user } = useAuth();
+  const { entries, isLoading: entriesLoading } = useJournalEntries(user?.id);
   const [matches, setMatches] = useState<SynchronicMatch[]>([]);
   const [filteredMatches, setFilteredMatches] = useState<SynchronicMatch[]>([]);
   const [minScore, setMinScore] = useState(60);
@@ -17,11 +19,11 @@ export function SynchronicitiesPage() {
 
   useEffect(() => {
     if (entries.length > 0) {
-      const syncMatches = findSynchronicMatches(entries, 40);
-      setMatches(syncMatches);
-      setLoading(false);
+      setMatches(findSynchronicMatches(entries, 40));
     }
-  }, [entries]);
+    // Senza pagine di diario non c'è niente da cercare: si esce comunque dal caricamento.
+    if (!entriesLoading) setLoading(false);
+  }, [entries, entriesLoading]);
 
   useEffect(() => {
     let filtered = matches.filter((match) => match.synchronicityScore >= minScore);
