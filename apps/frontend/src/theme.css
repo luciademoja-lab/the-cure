@@ -1572,3 +1572,417 @@ a {
   background: #0b0907;
   color: var(--text);
 }
+
+/* ── Percorso: segni, aiuti e guida ─────────────────────── */
+.path-symbol {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.5rem;
+}
+.path-symbol .sacred-symbol {
+  filter: drop-shadow(0 0 6px rgba(236, 212, 154, 0.45));
+}
+/* Un livello chiuso resta leggibile: si attenua solo il contenuto, non l'aiuto. */
+.path-level.locked {
+  opacity: 1;
+}
+.path-level.locked .path-symbol,
+.path-level.locked h3 {
+  opacity: 0.5;
+}
+.path-hint-button {
+  flex: none;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 50%;
+  border: none;
+  background: radial-gradient(circle, rgba(207, 165, 74, 0.22), rgba(207, 165, 74, 0.06) 70%);
+  color: var(--gold-light);
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  cursor: pointer;
+  text-shadow: 0 0 8px rgba(236, 212, 154, 0.6);
+  transition: background 0.4s ease, transform 0.4s ease;
+}
+.path-hint-button:hover,
+.path-hint-button.is-open {
+  background: radial-gradient(circle, rgba(236, 212, 154, 0.4), rgba(207, 165, 74, 0.1) 70%);
+  transform: scale(1.06);
+}
+.path-hint {
+  margin: 0.9rem 0 0.2rem 3.4rem;
+  padding: 0.9rem 1.1rem;
+  border-radius: 12px;
+  background: rgba(207, 165, 74, 0.07);
+  animation: path-hint-in 0.5s ease;
+}
+.path-hint p {
+  margin: 0;
+  line-height: 1.6;
+}
+.path-hint-points {
+  margin-top: 0.5rem !important;
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  color: var(--gold-light);
+}
+@keyframes path-hint-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+.path-guide {
+  margin-top: 1rem;
+}
+.path-guide summary {
+  cursor: pointer;
+  color: var(--gold-light);
+  letter-spacing: 0.04em;
+}
+.path-guide ul {
+  margin: 0.75rem 0 0;
+  padding-left: 1.2rem;
+  color: var(--text-body);
+  line-height: 1.7;
+}
+@media (max-width: 600px) {
+  .path-hint {
+    margin-left: 0;
+  }
+  .path-level-header {
+    flex-wrap: wrap;
+  }
+}
+
+/* ── Voce: dettatura e conversazione con Elayra ─────────── */
+.dictation,
+.chat-voice-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.6rem 0;
+  flex-wrap: wrap;
+}
+.dictation-button {
+  flex: none;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 50%;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--gold-light);
+  background: radial-gradient(circle, rgba(207, 165, 74, 0.22), rgba(207, 165, 74, 0.05) 70%);
+  transition: background 0.4s ease, color 0.4s ease, transform 0.4s ease;
+}
+.dictation-button:hover {
+  background: radial-gradient(circle, rgba(236, 212, 154, 0.38), rgba(207, 165, 74, 0.08) 70%);
+}
+.dictation-button.is-listening {
+  color: #fff6dc;
+  animation: mic-pulse 1.6s ease-in-out infinite;
+}
+.dictation-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+@keyframes mic-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(236, 212, 154, 0.45); }
+  50% { box-shadow: 0 0 0 10px rgba(236, 212, 154, 0); }
+}
+.dictation-status {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  font-style: italic;
+  min-height: 1.2em;
+}
+.dictation-unsupported {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0.4rem 0;
+}
+.voice-mode-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0.4rem 0.2rem;
+  font-family: var(--font-heading);
+  font-size: 0.95rem;
+  letter-spacing: 0.06em;
+  color: var(--gold-light);
+  text-shadow: 0 0 10px rgba(236, 212, 154, 0.4);
+}
+.voice-mode-orb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff6dc, var(--gold) 55%, transparent 75%);
+  box-shadow: 0 0 12px rgba(236, 212, 154, 0.7);
+}
+.voice-mode-button.is-on .voice-mode-orb {
+  animation: orbit-breathe 2.4s ease-in-out infinite;
+  box-shadow: 0 0 22px rgba(236, 212, 154, 0.95);
+}
+
+/* ── Sincronicità: guida ───────────────────────────────── */
+.sync-guide {
+  max-width: 760px;
+  margin: 1.25rem auto 0;
+  padding: 1rem 1.25rem;
+  border-radius: 14px;
+  background: rgba(207, 165, 74, 0.06);
+  text-align: left;
+}
+.sync-guide summary {
+  cursor: pointer;
+  color: var(--gold-light);
+  letter-spacing: 0.04em;
+}
+.sync-guide p {
+  margin: 0.75rem 0 0;
+  line-height: 1.7;
+  color: var(--text-body);
+}
+.sync-guide-count {
+  color: var(--gold-light) !important;
+}
+.synchronicities-page .stat-label {
+  color: var(--text-muted);
+}
+.synchronicities-page .stat-value {
+  color: var(--gold-light);
+}
+
+/* ── Avatar, account in barra, menu utente ─────────────── */
+.user-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  flex: none;
+  overflow: hidden;
+  color: var(--gold-light);
+  background: radial-gradient(circle, rgba(207, 165, 74, 0.22), rgba(207, 165, 74, 0.05) 72%);
+  box-shadow: 0 0 14px -4px rgba(236, 212, 154, 0.5);
+}
+.user-avatar--image {
+  object-fit: cover;
+}
+.user-avatar--initial {
+  font-family: var(--font-heading);
+}
+.navbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.navbar-account-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.navbar-profile-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+}
+.navbar-profile-link:hover .user-email {
+  color: var(--gold-light);
+  text-shadow: 0 0 10px rgba(236, 212, 154, 0.5);
+}
+.navbar-account-menu {
+  display: none;
+  position: relative;
+}
+.navbar-user-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0.2rem;
+  cursor: pointer;
+  color: var(--gold-light);
+}
+.navbar-user-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.6rem);
+  min-width: 190px;
+  display: flex;
+  flex-direction: column;
+  padding: 0.6rem 0.8rem;
+  border-radius: 16px;
+  background: radial-gradient(140% 120% at 100% 0%, rgba(207, 165, 74, 0.14), rgba(11, 9, 7, 0.95) 60%);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 20px 60px -20px rgba(0, 0, 0, 0.8), 0 0 40px -10px rgba(207, 165, 74, 0.25);
+  animation: path-hint-in 0.4s ease;
+  z-index: 120;
+}
+.navbar-user-dropdown button {
+  background: none;
+  border: none;
+  text-align: left;
+  padding: 0.6rem 0.2rem;
+  cursor: pointer;
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  letter-spacing: 0.06em;
+  color: var(--gold-light);
+  text-shadow: 0 0 10px rgba(236, 212, 154, 0.35);
+}
+.navbar-user-sub {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-shadow: none;
+}
+@media (max-width: 899px) {
+  .navbar-account-inline {
+    display: none;
+  }
+  .navbar-account-menu {
+    display: block;
+  }
+  /* La barra resta su una riga. */
+  .navbar-container {
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+  }
+  .upgrade-button {
+    margin-right: 0;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.75rem;
+  }
+}
+
+/* ── Pagina profilo ─────────────────────────────────────── */
+.profile-page {
+  max-width: 760px;
+}
+.profile-head {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+.profile-head h1 {
+  margin: 0;
+}
+.profile-email,
+.profile-muted {
+  color: var(--text-muted);
+  margin: 0.3rem 0 0;
+}
+.profile-small {
+  font-size: 0.85rem;
+}
+.profile-card {
+  margin-bottom: 1.25rem;
+}
+.profile-card h2 {
+  font-size: 1.3rem;
+  margin: 0 0 0.9rem;
+}
+.profile-plan-name {
+  font-family: var(--font-heading);
+  font-size: 1.3rem;
+  font-weight: 400;
+  color: var(--gold-light);
+}
+.profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+.profile-form {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.profile-form--stack {
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 360px;
+}
+.profile-form input {
+  flex: 1;
+  min-width: 200px;
+  width: 100%;
+  padding: 0.8rem 1rem;
+  border-radius: 10px;
+  border: none;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font: inherit;
+}
+.profile-form input:focus {
+  outline: none;
+  box-shadow: 0 0 0 1px rgba(236, 212, 154, 0.5), 0 0 18px -6px rgba(236, 212, 154, 0.5);
+}
+.profile-avatar-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+}
+.profile-avatar-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  width: 104px;
+  padding: 1rem 0.5rem 0.8rem;
+  border: none;
+  border-radius: 16px;
+  cursor: pointer;
+  color: var(--gold-light);
+  background: rgba(207, 165, 74, 0.05);
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  transition: background 0.4s ease, box-shadow 0.4s ease, transform 0.4s ease;
+}
+.profile-avatar-choice:hover {
+  background: rgba(207, 165, 74, 0.12);
+  transform: translateY(-2px);
+}
+.profile-avatar-choice.is-selected {
+  background: rgba(207, 165, 74, 0.16);
+  box-shadow: 0 0 26px -8px rgba(236, 212, 154, 0.75);
+}
+.profile-avatar-choice .sacred-symbol {
+  filter: drop-shadow(0 0 6px rgba(236, 212, 154, 0.55));
+}
+.profile-upload input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+.profile-upload {
+  position: relative;
+}
+.profile-upload:focus-within {
+  box-shadow: 0 0 0 1px rgba(236, 212, 154, 0.6);
+}
+.profile-upload-plus {
+  font-size: 1.9rem;
+  line-height: 34px;
+  height: 34px;
+}
+.profile-ok {
+  color: var(--gold-light);
+  margin: 0.75rem 0 0;
+}

@@ -1,5 +1,8 @@
 import { DailyRitual } from '../../types/dailyPractice';
+import { useState } from 'react';
 import { useTranslation } from '../../i18n/I18nProvider';
+import { DictationButton } from '../atoms/DictationButton';
+import { appendDictated } from '../../hooks/useDictation';
 
 type EveningRitualProps = {
   ritual?: DailyRitual;
@@ -8,12 +11,11 @@ type EveningRitualProps = {
 
 export function EveningRitual({ ritual, onComplete }: EveningRitualProps) {
   const { t } = useTranslation();
+  const [text, setText] = useState('');
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const response = formData.get('response') as string;
-    onComplete?.(response);
+    onComplete?.(text);
   };
 
   return (
@@ -37,7 +39,10 @@ export function EveningRitual({ ritual, onComplete }: EveningRitualProps) {
             placeholder={t('evening.textareaPlaceholder')}
             className="ritual-textarea"
             rows={4}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
           />
+          <DictationButton onText={(piece) => setText((prev) => appendDictated(prev, piece))} />
 
           <div className="soothing-words">
             <p className="soothing-text">

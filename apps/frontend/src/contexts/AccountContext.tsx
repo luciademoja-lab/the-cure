@@ -1,5 +1,7 @@
 import { createContext, useContext } from 'react';
 
+export type AvatarKind = 'point' | 'circle' | 'triangle' | 'image';
+
 export type PlanId = 'free' | 'forgia' | 'part' | 'full' | 'h24';
 
 export interface Plan {
@@ -16,6 +18,8 @@ export interface Account {
   nickname: string;
   onboarded: boolean;
   referralCode: string | null;
+  avatarKind: AvatarKind | null;
+  avatarPath: string | null;
   plan: PlanId;
   usage: { used: number; limit: number };
   subscription: { plan: PlanId; status: string; current_period_end: string | null; sponsored_by: string | null } | null;

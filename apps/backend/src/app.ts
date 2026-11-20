@@ -144,10 +144,13 @@ export function createApp() {
       db(user, `ai_usage?select=id&created_at=gte.${encodeURIComponent(startOfMonthUtc())}&limit=1`, {
         prefer: 'count=exact',
       }),
-      db<{ nickname: string | null; referral_code: string | null; onboarded_at: string | null }[]>(
-        user,
-        'profiles?select=nickname,referral_code,onboarded_at'
-      ),
+      db<{
+        nickname: string | null;
+        referral_code: string | null;
+        onboarded_at: string | null;
+        avatar_kind: string | null;
+        avatar_path: string | null;
+      }[]>(user, 'profiles?select=nickname,referral_code,onboarded_at,avatar_kind,avatar_path'),
     ]);
     const planId: PlanId = isPlanId(plan.data) ? plan.data : 'free';
     const p = profile.data?.[0];
@@ -157,6 +160,8 @@ export function createApp() {
       nickname: p?.nickname || user.nickname || '',
       referralCode: p?.referral_code || null,
       onboarded: Boolean(p?.onboarded_at),
+      avatarKind: p?.avatar_kind || null,
+      avatarPath: p?.avatar_path || null,
     };
   };
 
@@ -192,12 +197,48 @@ export function createApp() {
         nickname: account.nickname,
         onboarded: account.onboarded,
         referralCode: account.referralCode,
+        avatarKind: account.avatarKind,
+        avatarPath: account.avatarPath,
         plan: account.plan.id,
         usage: { used: account.used, limit: account.plan.monthlyMessages },
         subscription: sub?.[0] || null,
         grants: grants || [],
         plans: Object.values(PLANS).map(({ stripeLookupKey: _k, ...p }) => p),
       });
+    })
+  );
+
+  // Profilo: nome, avatar (punto, cerchio, triangolo) oppure foto già caricata nella propria cartella.
+  app.post(
+    '/api/profile',
+    requireAuth,
+    route(async (req, res) => {
+      const body = req.body || {};
+      const patch: Record<string, string | null> = {};
+      if (body.nickname !== undefined) {
+        const nickname = typeof body.nickname === 'string' ? body.nickname.trim() : '';
+        if (nickname.length < 2 || nickname.length > 40) throw new HttpError(400, 'Il nome deve avere tra 2 e 40 caratteri');
+        patch.nickname = nickname;
+      }
+      if (body.avatarKind !== undefined) {
+        const kind = body.avatarKind;
+        if (kind !== null && !['point', 'circle', 'triangle', 'image'].includes(kind)) {
+          throw new HttpError(400, 'Avatar non valido');
+        }
+        patch.avatar_kind = kind;
+        if (kind === 'image') {
+          const path = typeof body.avatarPath === 'string' ? body.avatarPath : '';
+          if (!path.startsWith(`${req.user.id}/`) || path.includes('..') || path.length > 200) {
+            throw new HttpError(400, 'Immagine non valida');
+          }
+          patch.avatar_path = path;
+        } else {
+          patch.avatar_path = null;
+        }
+      }
+      if (Object.keys(patch).length === 0) throw new HttpError(400, 'Niente da cambiare');
+      await db(req.user, `profiles?id=eq.${req.user.id}`, { method: 'PATCH', body: patch });
+      res.status(204).end();
     })
   );
 

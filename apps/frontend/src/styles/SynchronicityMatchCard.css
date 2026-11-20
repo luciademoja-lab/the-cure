@@ -39,7 +39,7 @@
 .match-header h3 {
   font-size: 18px;
   font-weight: 600;
-  color: #333;
+  color: var(--text);
   margin: 0;
 }
 
@@ -59,7 +59,7 @@
 
 .score-label {
   font-size: 11px;
-  color: #666;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -72,7 +72,7 @@
 }
 
 .common-themes {
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(207, 165, 74, 0.06);
   padding: 12px;
   border-radius: 8px;
 }
@@ -80,7 +80,7 @@
 .common-themes h4 {
   margin: 0 0 12px 0;
   font-size: 13px;
-  color: #333;
+  color: var(--text);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -93,13 +93,13 @@
 }
 
 .theme-chip {
-  background: white;
+  background: var(--surface-1);
   border: 2px solid;
   border-radius: 16px;
   padding: 6px 12px;
   font-size: 12px;
   font-weight: 500;
-  color: #333;
+  color: var(--text);
   transition: all 0.2s ease;
 }
 
@@ -109,12 +109,12 @@
 
 .no-themes {
   font-size: 12px;
-  color: #999;
+  color: var(--text-muted);
   font-style: italic;
 }
 
 .insights-section {
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(207, 165, 74, 0.06);
   padding: 12px;
   border-radius: 8px;
   border-left: 3px solid #cfa54a;
@@ -123,7 +123,7 @@
 .insights-section h4 {
   margin: 0 0 12px 0;
   font-size: 13px;
-  color: #333;
+  color: var(--text);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -138,20 +138,20 @@
 .insight-text {
   margin: 0;
   font-size: 13px;
-  color: #555;
+  color: var(--text-muted);
   line-height: 1.5;
 }
 
 .no-insights {
   margin: 0;
   font-size: 12px;
-  color: #999;
+  color: var(--text-muted);
   font-style: italic;
 }
 
 .view-details-btn {
-  background: linear-gradient(135deg, #cfa54a, #44a3a8);
-  color: white;
+  background: linear-gradient(135deg, #cfa54a, #9c7a2c);
+  color: var(--on-gold, #1a1408);
   border: none;
   padding: 10px 16px;
   border-radius: 6px;
@@ -183,7 +183,7 @@
 
 .score-text {
   font-size: 12px;
-  color: #666;
+  color: var(--text-muted);
   font-weight: 500;
 }
 

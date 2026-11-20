@@ -55,6 +55,7 @@ let rituals: Row[] = [];
 let reflections: Row[] = [];
 let forgeProfiles: Row[] = [];
 const rpcCalls: string[] = [];
+const profilePatches: { query: string; body: Row }[] = [];
 let seq = 0;
 const uuid = () => `00000000-0000-4000-8000-${String(++seq).padStart(12, '0')}`;
 
@@ -170,7 +171,13 @@ const fetchMock = vi.fn(async (input: any, init: any = {}) => {
     }
     return json([], { headers: { 'content-range': `0-0/${usage.length}` } });
   }
-  if (url.pathname === '/rest/v1/profiles') return json([profileRow]);
+  if (url.pathname === '/rest/v1/profiles') {
+    if (method === 'PATCH') {
+      profilePatches.push({ query: url.search, body: JSON.parse(init.body) });
+      return json(null, { status: 204 });
+    }
+    return json([profileRow]);
+  }
   if (url.pathname === '/rest/v1/subscriptions' || url.pathname === '/rest/v1/plan_grants') return json([]);
   if (url.pathname === '/rest/v1/forge_messages') return json([...forgeMessages].reverse());
   if (url.pathname.startsWith('/rest/v1/rpc/')) {
@@ -503,5 +510,33 @@ describe('piani, pagamenti e Forgia a pagamento', () => {
     const res = await request(app).post('/api/sky/claim').set(authed).send({ constellation: 'Ori' });
     expect(res.status).toBe(201);
     expect(rpcCalls).toContain('claim_constellation');
+  });
+});
+
+describe('profilo', () => {
+  it('cambia nome e avatar solo sulla propria riga', async () => {
+    profilePatches.length = 0;
+    const res = await request(app).post('/api/profile').set(authed).send({ nickname: '  Lumira  ', avatarKind: 'circle' });
+    expect(res.status).toBe(204);
+    expect(profilePatches[0].query).toContain('id=eq.user-1');
+    expect(profilePatches[0].body).toEqual({ nickname: 'Lumira', avatar_kind: 'circle', avatar_path: null });
+  });
+
+  it('accetta solo foto nella propria cartella e rifiuta nomi e avatar non validi', async () => {
+    profilePatches.length = 0;
+    const ok = await request(app).post('/api/profile').set(authed).send({ avatarKind: 'image', avatarPath: 'user-1/foto.webp' });
+    expect(ok.status).toBe(204);
+    expect(profilePatches[0].body).toEqual({ avatar_kind: 'image', avatar_path: 'user-1/foto.webp' });
+    for (const body of [
+      { avatarKind: 'image', avatarPath: 'user-2/foto.webp' },
+      { avatarKind: 'image', avatarPath: 'user-1/../user-2/x.png' },
+      { avatarKind: 'star' },
+      { nickname: 'A' },
+      {},
+    ]) {
+      const res = await request(app).post('/api/profile').set(authed).send(body);
+      expect(res.status).toBe(400);
+    }
+    expect(profilePatches).toHaveLength(1);
   });
 });

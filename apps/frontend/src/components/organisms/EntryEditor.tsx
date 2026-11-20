@@ -3,6 +3,11 @@ import { TextArea } from '../atoms/TextArea';
 import { Button } from '../atoms/Button';
 import { useTranslation } from '../../i18n/I18nProvider';
 import { apiGet, ChatMessage, streamChat } from '../../lib/api';
+import { DictationButton } from '../atoms/DictationButton';
+import { appendDictated, useDictation } from '../../hooks/useDictation';
+import { SpeechQueue, speechSupported } from '../../lib/speech';
+
+const SEND_AFTER_PAUSE_MS = 1800;
 
 type EntryEditorProps = {
   /** Chiude la conversazione e la salva come pagina di diario. */
@@ -16,7 +21,7 @@ type Bubble = ChatMessage & { local?: boolean; kind?: 'error' | 'note' };
  * con la voce di Elayra e li conserva: riaprendo l'app la conversazione è ancora lì.
  */
 export function EntryEditor({ onFinish }: EntryEditorProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [messages, setMessages] = useState<Bubble[]>([]);
   const [inputText, setInputText] = useState('');
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
@@ -24,6 +29,69 @@ export function EntryEditor({ onFinish }: EntryEditorProps) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const chatWindowRef = useRef<HTMLDivElement | null>(null);
+
+  // ── Conversazione a voce: si parla, alla pausa il messaggio parte, Elayra risponde a voce.
+  const [voiceMode, setVoiceMode] = useState(false);
+  const [elayraSpeaking, setElayraSpeaking] = useState(false);
+  const voiceModeRef = useRef(false);
+  const spokenRef = useRef('');
+  const pauseTimer = useRef<number | undefined>(undefined);
+  const speechRef = useRef<SpeechQueue | null>(null);
+  const sendRef = useRef<(text?: string) => Promise<void>>(async () => {});
+
+  const scheduleSend = () => {
+    window.clearTimeout(pauseTimer.current);
+    pauseTimer.current = window.setTimeout(() => {
+      const said = spokenRef.current.trim();
+      if (!said || !voiceModeRef.current) return;
+      spokenRef.current = '';
+      conversation.stop();
+      void sendRef.current(said);
+    }, SEND_AFTER_PAUSE_MS);
+  };
+
+  const conversation = useDictation({
+    locale,
+    onFinal: (piece) => {
+      spokenRef.current = appendDictated(spokenRef.current, piece);
+      setInputText(spokenRef.current);
+      scheduleSend();
+    },
+    onInterim: () => window.clearTimeout(pauseTimer.current),
+  });
+  const voiceAvailable = conversation.supported && speechSupported();
+
+  const listenAgain = () => {
+    setElayraSpeaking(false);
+    if (voiceModeRef.current) conversation.start();
+  };
+
+  const toggleVoiceMode = () => {
+    if (voiceModeRef.current) {
+      voiceModeRef.current = false;
+      setVoiceMode(false);
+      window.clearTimeout(pauseTimer.current);
+      conversation.stop();
+      speechRef.current?.stop();
+      setElayraSpeaking(false);
+      return;
+    }
+    voiceModeRef.current = true;
+    setVoiceMode(true);
+    spokenRef.current = '';
+    // Su Safari e Chrome la voce va "sbloccata" da un tocco della persona.
+    window.speechSynthesis?.getVoices();
+    conversation.start();
+  };
+
+  useEffect(
+    () => () => {
+      voiceModeRef.current = false;
+      window.clearTimeout(pauseTimer.current);
+      speechRef.current?.stop();
+    },
+    []
+  );
 
   useEffect(() => {
     let active = true;
@@ -65,9 +133,14 @@ export function EntryEditor({ onFinish }: EntryEditorProps) {
   const busy = isThinking || isStreaming || isSaving || isLoadingHistory;
   const hasUserMessages = messages.some((m) => m.role === 'user');
 
-  const handleSendMessage = async () => {
-    const content = inputText.trim();
+  const handleSendMessage = async (spoken?: string) => {
+    const content = (spoken ?? inputText).trim();
     if (!content || busy) return;
+    const speak = voiceModeRef.current;
+    if (speak) {
+      speechRef.current?.stop();
+      speechRef.current = new SpeechQueue(locale, listenAgain);
+    }
 
     setMessages((prev) => [...prev.filter((m) => m.kind !== 'error'), { role: 'user', content }]);
     setInputText('');
@@ -77,6 +150,10 @@ export function EntryEditor({ onFinish }: EntryEditorProps) {
     try {
       await streamChat(content, {
         onDelta: (text) => {
+          if (speak) {
+            setElayraSpeaking(true);
+            speechRef.current?.push(text);
+          }
           if (!started) {
             started = true;
             setIsThinking(false);
@@ -99,8 +176,13 @@ export function EntryEditor({ onFinish }: EntryEditorProps) {
     } finally {
       setIsThinking(false);
       setIsStreaming(false);
+      if (speak) {
+        if (started) speechRef.current?.flush();
+        else listenAgain();
+      }
     }
   };
+  sendRef.current = handleSendMessage;
 
   const handleFinishAndSave = async () => {
     if (!hasUserMessages || busy) return;
@@ -158,8 +240,40 @@ export function EntryEditor({ onFinish }: EntryEditorProps) {
           maxLength={4000}
           onKeyDown={handleKeyDown}
         />
+        <div className="chat-voice-row">
+          {!voiceMode && (
+            <DictationButton
+              disabled={busy}
+              onText={(piece) => setInputText((prev) => appendDictated(prev, piece))}
+            />
+          )}
+          {voiceAvailable && (
+            <button
+              type="button"
+              className={`voice-mode-button ${voiceMode ? 'is-on' : ''}`}
+              onClick={toggleVoiceMode}
+              aria-pressed={voiceMode}
+            >
+              <span className="voice-mode-orb" aria-hidden="true" />
+              {voiceMode ? t('voice.conversationOff') : t('voice.conversationOn')}
+            </button>
+          )}
+          {voiceMode && (
+            <span className="dictation-status" aria-live="polite">
+              {elayraSpeaking
+                ? t('voice.elayraSpeaking')
+                : busy
+                  ? t('journal.chat.thinking')
+                  : conversation.error === 'mic'
+                    ? t('voice.micDenied')
+                    : conversation.listening
+                      ? conversation.interim || t('voice.listening')
+                      : ''}
+            </span>
+          )}
+        </div>
         <div className="chat-actions">
-          <Button label={t('chat.send')} onClick={handleSendMessage} variant="primary" disabled={busy || !inputText.trim()} />
+          <Button label={t('chat.send')} onClick={() => void handleSendMessage()} variant="primary" disabled={busy || !inputText.trim()} />
           <Button
             label={isSaving ? t('chat.saving') : t('chat.finish')}
             onClick={handleFinishAndSave}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from '../i18n/I18nProvider';
 import { apiGet, apiPost } from '../lib/api';
+import { SacredSymbol, symbolForLevel } from '../components/atoms/SacredSymbol';
 
 type Level = {
   level: number;
@@ -28,20 +29,32 @@ export function GamingPage() {
   const [savingLevel, setSavingLevel] = useState<number | null>(null);
   const [savedLevel, setSavedLevel] = useState<number | null>(null);
   const [error, setError] = useState('');
+  const [hintOpen, setHintOpen] = useState<number | null>(null);
 
+  // Si ricarica anche quando si torna su questa scheda: i punti arrivano da diario e rituali.
   useEffect(() => {
     let active = true;
-    apiGet<Progress>('/api/progress')
-      .then((data) => {
-        if (!active) return;
-        setProgress(data);
-        setDrafts(Object.fromEntries(data.levels.map((l) => [l.level, l.response])));
-      })
-      .catch((e) => {
-        if (active) setError(e instanceof Error ? e.message : t('chat.error.generic'));
-      });
+    const load = () =>
+      apiGet<Progress>('/api/progress')
+        .then((data) => {
+          if (!active) return;
+          setProgress(data);
+          // Non sovrascrive ciò che si sta scrivendo.
+          setDrafts((prev) => ({ ...Object.fromEntries(data.levels.map((l) => [l.level, l.response])), ...prev }));
+        })
+        .catch((e) => {
+          if (active) setError(e instanceof Error ? e.message : t('chat.error.generic'));
+        });
+    void load();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void load();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
     return () => {
       active = false;
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -102,21 +115,53 @@ export function GamingPage() {
                 ? t('path.allOpen')
                 : t('path.next', { points: progress.nextLevelAt - progress.lightPoints })}
             </p>
-            <p className="path-how">{t('path.how')}</p>
+            <details className="path-guide">
+              <summary>{t('path.guide.title')}</summary>
+              <ul>
+                <li>{t('path.guide.journal')}</li>
+                <li>{t('path.guide.rituals')}</li>
+                <li>{t('path.guide.levels')}</li>
+                <li>{t('path.guide.answers')}</li>
+              </ul>
+            </details>
           </section>
 
           <ol className="path-levels">
             {progress.levels.map((l) => (
               <li key={l.level} className={`card path-level ${l.unlocked ? 'unlocked' : 'locked'}`}>
                 <div className="path-level-header">
-                  <span className="path-symbol" aria-hidden="true">
-                    {l.symbol}
+                  <span className="path-symbol">
+                    <SacredSymbol kind={symbolForLevel(l.level)} size={30} />
                   </span>
                   <h3>
                     {l.level}. {l.name}
                   </h3>
-                  {!l.unlocked && <span className="path-threshold">{t('path.opensAt', { points: l.threshold })}</span>}
+                  {!l.unlocked && (
+                    <span className="path-threshold">
+                      {t('path.missing', { points: l.threshold - progress.lightPoints })}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    className={`path-hint-button ${hintOpen === l.level ? 'is-open' : ''}`}
+                    aria-expanded={hintOpen === l.level}
+                    aria-controls={`path-hint-${l.level}`}
+                    aria-label={t('path.hintLabel', { name: l.name })}
+                    onClick={() => setHintOpen((v) => (v === l.level ? null : l.level))}
+                  >
+                    ?
+                  </button>
                 </div>
+                {hintOpen === l.level && (
+                  <div className="path-hint" id={`path-hint-${l.level}`}>
+                    <p>{t(`path.hint.${l.level}`)}</p>
+                    <p className="path-hint-points">
+                      {l.unlocked
+                        ? t('path.hintOpen')
+                        : t('path.hintMissing', { points: l.threshold - progress.lightPoints })}
+                    </p>
+                  </div>
+                )}
                 {l.unlocked && l.question && (
                   <>
                     <blockquote className="path-question">{l.question}</blockquote>
