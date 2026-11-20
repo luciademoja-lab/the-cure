@@ -1,6 +1,6 @@
 import Stripe from 'stripe';
 import { config } from '../config';
-import { DUO_COUPON_ID, isPlanId, PLANS, PlanId } from '../plans';
+import { DUO_COUPON_ID, DUO_PERCENT_OFF, isPlanId, PLANS, PlanId } from '../plans';
 import { adminDb, HttpError } from './supabase';
 
 let client: Stripe | null = null;
@@ -10,13 +10,49 @@ export function stripe(): Stripe {
   return client;
 }
 
-async function priceIdFor(plan: PlanId): Promise<string> {
-  const key = PLANS[plan].stripeLookupKey;
+/**
+ * Il prezzo mensile del piano su Stripe. Se non c'è ancora (primo acquisto dopo aver messo le chiavi),
+ * lo crea: prodotto + prezzo con la lookup key del piano. Rilanciarlo non duplica nulla.
+ */
+export async function priceIdFor(plan: PlanId): Promise<string> {
+  const def = PLANS[plan];
+  const key = def.stripeLookupKey;
   if (!key) throw new HttpError(400, 'Questo piano non si acquista');
   const prices = await stripe().prices.list({ lookup_keys: [key], active: true, limit: 1 });
-  const price = prices.data[0];
-  if (!price) throw new HttpError(503, 'Prezzi non configurati su Stripe: esegui "npm run stripe:setup"');
+  if (prices.data[0]) return prices.data[0].id;
+  const product = await stripe().products.create({ name: `Elayra — ${def.name}`, metadata: { elayra_plan: plan } });
+  const price = await stripe().prices.create(
+    {
+      product: product.id,
+      currency: 'eur',
+      unit_amount: def.priceCents,
+      recurring: { interval: 'month' },
+      lookup_key: key,
+      transfer_lookup_key: true,
+      tax_behavior: 'inclusive',
+    },
+    { idempotencyKey: `elayra-price-${key}-${def.priceCents}` }
+  );
   return price.id;
+}
+
+/** Il coupon del 20% per chi paga per due; creato la prima volta che serve. */
+export async function ensureDuoCoupon(): Promise<void> {
+  try {
+    await stripe().coupons.retrieve(DUO_COUPON_ID);
+  } catch {
+    try {
+      await stripe().coupons.create({
+        id: DUO_COUPON_ID,
+        name: `Abbonamento per due −${DUO_PERCENT_OFF}%`,
+        percent_off: DUO_PERCENT_OFF,
+        duration: 'forever',
+      });
+    } catch (e) {
+      // Creato nel frattempo da un'altra richiesta: va bene.
+      if (!(e instanceof Stripe.errors.StripeError && e.code === 'resource_already_exists')) throw e;
+    }
+  }
 }
 
 export async function customerIdFor(userId: string): Promise<string | null> {
@@ -41,6 +77,7 @@ export async function createCheckout(opts: {
   sponsoredUserId?: string;
 }): Promise<string> {
   const price = await priceIdFor(opts.plan);
+  if (opts.sponsoredUserId) await ensureDuoCoupon();
   const customer = await customerIdFor(opts.userId);
   const metadata: Record<string, string> = { user_id: opts.userId, plan: opts.plan };
   if (opts.sponsoredUserId) metadata.sponsored_user_id = opts.sponsoredUserId;

@@ -6,6 +6,14 @@ export const locales: Locale[] = ['en', 'it', 'zh'];
 
 export const translations: Record<Locale, TranslationMap> = {
   en: {
+    "nav.upgrade": "Upgrade your plan",
+    "forge.mission.kicker": "The Forge",
+    "forge.mission.title": "Where solitary ideas find their fire",
+    "forge.mission.p1": "Many beautiful things never come into the world, not for lack of talent, but because the person carrying them is alone. The Forge exists so that no project has to grow in silence.",
+    "forge.mission.p2": "While you talk with Elayra, she learns what you are building. When she meets someone shaping something close to yours, she writes to both of you. If you both say yes, a private room opens: a place to think together, keep your documents, and, when you want, invite Elayra to help you track and gather what you need.",
+    "forge.mission.p3": "Here, the people you create with can also hold you up. If you work on a project together and one of you has more means, they can pay for the other's subscription, and receive 20% off the total of both. Because helping should be lighter than staying alone.",
+    "forge.mission.p4": "This is how the Forge grows: one person opens the door for another, so that as many as possible can take part.",
+    "forge.mission.cta": "Enter the Forge — from €2.99/month",
     "nav.plans": "Plans",
     "auth.or": "or",
     "auth.google": "Continue with Google",
@@ -512,6 +520,14 @@ export const translations: Record<Locale, TranslationMap> = {
     'auth.forgotPassword.backToSignIn': 'Back to Sign In',
   },
   it: {
+    "nav.upgrade": "Fai l’upgrade",
+    "forge.mission.kicker": "La Forgia",
+    "forge.mission.title": "Dove le idee solitarie trovano il loro fuoco",
+    "forge.mission.p1": "Molte cose belle non vengono mai al mondo, non per mancanza di talento, ma perché chi le porta dentro è solo. La Forgia esiste perché nessun progetto debba crescere in silenzio.",
+    "forge.mission.p2": "Mentre parli con Elayra, lei impara cosa stai costruendo. Quando incontra qualcuno che sta dando forma a qualcosa di vicino al tuo, scrive a entrambi. Se dite sì, si apre una stanza vostra: un luogo per pensare insieme, custodire i documenti e, quando volete, invitare Elayra ad aiutarvi a tenere il filo e raccogliere ciò che vi serve.",
+    "forge.mission.p3": "Qui, le persone con cui crei possono anche sostenerti. Se lavorate a un progetto insieme e uno di voi ha più mezzi, può pagare la mensilità dell’altro, e ottiene il 20% di sconto sul totale di entrambi. Perché aiutare deve pesare meno che restare soli.",
+    "forge.mission.p4": "È così che la Forgia cresce: una persona apre la porta a un’altra, perché il maggior numero possibile di persone possa farne parte.",
+    "forge.mission.cta": "Entra nella Forgia — da 2,99 €/mese",
     "nav.plans": "Piani",
     "auth.or": "oppure",
     "auth.google": "Continua con Google",

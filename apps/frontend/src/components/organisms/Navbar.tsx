@@ -4,7 +4,10 @@ import { useTranslation } from '../../i18n/I18nProvider';
 import { useAuth } from '../../contexts/AuthContext';
 import { LanguageSelector } from '../molecules/LanguageSelector';
 import { SuccessModal } from '../atoms/SuccessModal';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { supabase } from '../../lib/supabase';
+import { apiGet } from '../../lib/api';
+import type { PlanId } from '../../contexts/AccountContext';
 
 export function Navbar() {
   const location = useLocation();
@@ -12,6 +15,32 @@ export function Navbar() {
   const { t } = useTranslation();
   const { isAuthenticated, logout, user } = useAuth();
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [plan, setPlan] = useState<PlanId | null>(null);
+
+  // Il piano attuale, solo dopo la 2FA (prima il server non risponde). Si ricarica cambiando pagina,
+  // così dopo un acquisto il pulsante sparisce.
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setPlan(null);
+      return;
+    }
+    let alive = true;
+    void (async () => {
+      try {
+        const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (data?.currentLevel !== 'aal2') return;
+        const me = await apiGet<{ plan: PlanId }>('/api/me');
+        if (alive) setPlan(me.plan);
+      } catch {
+        /* il pulsante resta nascosto */
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [isAuthenticated, user?.id, location.pathname]);
+
+  const canUpgrade = isAuthenticated && plan !== null && plan !== 'h24';
 
   const publicLinks: { path: string; label: string }[] = [];
 
@@ -57,6 +86,11 @@ export function Navbar() {
         <div className="navbar-actions">
           {isAuthenticated ? (
             <div className="user-menu">
+              {canUpgrade && (
+                <button type="button" className="upgrade-button" onClick={() => navigate('/plans')}>
+                  {t('nav.upgrade')}
+                </button>
+              )}
               <span className="user-email">{user?.nickname}</span>
               <button onClick={handleLogout} className="logout-button">
                 Logout

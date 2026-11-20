@@ -1236,3 +1236,37 @@ a {
   font-size: 1.4rem;
   text-decoration: none;
 }
+
+/* Upgrade e missione della Forgia */
+.upgrade-button {
+  background: var(--gold, #d4a853);
+  color: #0b0a08;
+  border: none;
+  border-radius: 999px;
+  padding: 0.45rem 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-right: 0.75rem;
+  white-space: nowrap;
+}
+.upgrade-button:hover { filter: brightness(1.08); }
+.forge-mission {
+  border: 1px solid rgba(212, 168, 83, 0.35);
+  background: radial-gradient(120% 140% at 0% 0%, rgba(212, 168, 83, 0.12), transparent 60%);
+  margin-bottom: 1.5rem;
+}
+.forge-mission h2 { font-size: 1.6rem; margin: 0.25rem 0 1rem; }
+.forge-mission p { line-height: 1.7; }
+.forge-mission-kicker {
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.75rem;
+  opacity: 0.7;
+  margin: 0;
+}
+.forge-mission-gift {
+  border-left: 2px solid var(--gold, #d4a853);
+  padding-left: 1rem;
+  font-style: italic;
+}
+.forge-mission .cta-button { display: inline-block; margin-top: 0.5rem; text-decoration: none; }
