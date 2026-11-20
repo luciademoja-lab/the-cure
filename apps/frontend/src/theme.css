@@ -1270,3 +1270,305 @@ a {
   font-style: italic;
 }
 .forge-mission .cta-button { display: inline-block; margin-top: 0.5rem; text-decoration: none; }
+
+/* ── Menu orbitale (desktop e telefono) ─────────────────── */
+@keyframes orbit-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes orbit-spin-back {
+  to { transform: rotate(-360deg); }
+}
+@keyframes orbit-breathe {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 0.9; }
+}
+
+/* Le pagine si raggiungono dal cerchio: la barra tiene solo marchio e account. */
+.navbar-links {
+  display: none !important;
+}
+
+.orbit {
+  display: block;
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 90;
+  transform-origin: center center;
+  pointer-events: none;
+  transition: transform 1.6s cubic-bezier(0.22, 0.8, 0.2, 1);
+  will-change: transform;
+}
+
+.orbit-halo {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, transparent 58%, rgba(207, 165, 74, 0.07) 70%, transparent 74%);
+  animation: orbit-breathe 9s ease-in-out infinite;
+  transition: background 1.2s ease;
+}
+
+.orbit-ring {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: absolute;
+  inset: 0;
+  animation: orbit-spin 140s linear infinite;
+}
+
+.orbit-slot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+}
+
+/* Le parole restano dritte mentre il cerchio gira. */
+.orbit-upright {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: block;
+  animation: orbit-spin-back 140s linear infinite;
+}
+
+.orbit--paused .orbit-ring,
+.orbit--paused .orbit-upright,
+.orbit--paused .orbit-halo {
+  animation-play-state: paused;
+}
+
+.orbit-word {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  background: none;
+  border: none;
+  padding: 0.6rem 0.4rem;
+  cursor: pointer;
+  pointer-events: auto;
+  font-family: var(--font-heading);
+  font-size: 1.15rem;
+  letter-spacing: 0.12em;
+  color: var(--gold-light);
+  text-shadow: 0 0 10px rgba(236, 212, 154, 0.55), 0 0 26px rgba(207, 165, 74, 0.35);
+  opacity: 0.82;
+  transition: opacity 0.9s ease, color 0.6s ease, text-shadow 0.6s ease, transform 0.6s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.orbit-word:hover,
+.orbit-word:focus-visible {
+  opacity: 1;
+  color: #fff6dc;
+  text-shadow: 0 0 12px rgba(255, 240, 200, 0.9), 0 0 34px rgba(236, 212, 154, 0.7), 0 0 70px rgba(207, 165, 74, 0.45);
+  transform: translate(-50%, -50%) scale(1.08);
+  outline: none;
+}
+
+.orbit-spark {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  background: radial-gradient(circle, #fff6dc, var(--gold) 45%, transparent 70%);
+  box-shadow: 0 0 18px rgba(236, 212, 154, 0.9);
+  opacity: 0;
+  transition: opacity 0.9s ease, transform 0.9s ease;
+}
+
+/* Piccolo astro in basso a sinistra: le parole diventano punti di luce. */
+.orbit--dock {
+  pointer-events: auto;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.orbit--dock .orbit-word {
+  opacity: 0;
+  pointer-events: none;
+}
+.orbit--dock .orbit-spark {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(var(--spark-scale, 7));
+}
+.orbit--dock .orbit-halo {
+  background: radial-gradient(circle, rgba(207, 165, 74, 0.18) 0%, rgba(207, 165, 74, 0.06) 55%, transparent 72%);
+}
+.orbit--dock .orbit-ring,
+.orbit--dock .orbit-upright {
+  animation-duration: 40s;
+}
+.orbit--dock.orbit--open .orbit-halo {
+  background: radial-gradient(circle, rgba(236, 212, 154, 0.32) 0%, rgba(207, 165, 74, 0.1) 55%, transparent 72%);
+}
+
+/* La tendina che si apre dal piccolo astro. */
+.orbit-dropdown {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  position: fixed;
+  z-index: 95;
+  padding: 0.9rem 1.1rem;
+  border-radius: 18px;
+  background: radial-gradient(140% 120% at 0% 100%, rgba(207, 165, 74, 0.14), rgba(11, 9, 7, 0.92) 60%);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 20px 60px -20px rgba(0, 0, 0, 0.8), 0 0 40px -10px rgba(207, 165, 74, 0.25);
+  opacity: 0;
+  transform: translateY(14px) scale(0.96);
+  transform-origin: bottom left;
+  pointer-events: none;
+  transition: opacity 0.6s ease, transform 0.7s cubic-bezier(0.22, 0.8, 0.2, 1);
+}
+.orbit-dropdown.is-open {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+.orbit-dropdown-link {
+  background: none;
+  border: none;
+  text-align: left;
+  padding: 0.45rem 0.2rem;
+  cursor: pointer;
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  letter-spacing: 0.1em;
+  color: var(--gold-light);
+  opacity: 0.75;
+  text-shadow: 0 0 10px rgba(236, 212, 154, 0.35);
+  transition: opacity 0.4s ease, text-shadow 0.4s ease, transform 0.4s ease;
+}
+.orbit-dropdown-link:hover,
+.orbit-dropdown-link:focus-visible,
+.orbit-dropdown-link.is-current {
+  opacity: 1;
+  outline: none;
+  text-shadow: 0 0 12px rgba(255, 240, 200, 0.85), 0 0 30px rgba(207, 165, 74, 0.5);
+  transform: translateX(4px);
+}
+
+/* Le pagine lasciano spazio all'astro in basso a sinistra. */
+.page-shell {
+  padding-bottom: 140px;
+}
+
+/* ── Home: titolo nel cerchio, pulsante sotto il marchio, sottotitolo sotto il cerchio ── */
+.landing-page {
+  position: relative;
+  min-height: calc(100vh - var(--nav-h, 72px));
+  padding: 0;
+  display: block;
+}
+.landing-cta {
+  position: absolute;
+  top: 1.25rem;
+  left: max(1.5rem, calc((100vw - 1180px) / 2 + 1.5rem));
+  z-index: 92;
+}
+.landing-cta .cta-button {
+  display: inline-block;
+}
+.landing-content {
+  position: fixed;
+  left: 50%;
+  top: calc(var(--nav-h, 72px) + (100vh - var(--nav-h, 72px)) * 0.46);
+  transform: translate(-50%, -50%);
+  width: min(380px, 52vw);
+  max-width: none;
+  text-align: center;
+  z-index: 91;
+  pointer-events: none;
+}
+.landing-content h1 {
+  font-size: clamp(1.8rem, 3.2vw, 2.5rem);
+  margin: 0;
+}
+.landing-subtitle.subtitle {
+  position: fixed;
+  left: 50%;
+  bottom: 1.4rem;
+  transform: translateX(-50%);
+  margin: 0;
+  width: max-content;
+  max-width: 90vw;
+  text-align: center;
+  z-index: 91;
+}
+
+@media (max-width: 899px) {
+  .orbit-word {
+    font-size: 0.82rem;
+    letter-spacing: 0.08em;
+    padding: 0.5rem 0.3rem;
+  }
+  .landing-cta {
+    top: 1rem;
+    left: 1.25rem;
+  }
+  .landing-content {
+    width: 52vw;
+  }
+  .landing-content h1 {
+    font-size: clamp(1rem, 4.6vw, 1.35rem);
+  }
+  .landing-subtitle.subtitle {
+    font-size: 0.95rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbit,
+  .orbit-dropdown {
+    transition-duration: 0.01s;
+  }
+  .orbit-ring,
+  .orbit-upright,
+  .orbit-halo {
+    animation: none;
+  }
+}
+
+/* ── Logout e lingua: senza bordi, luce morbida ─────────── */
+.logout-button {
+  border: none;
+  background: none;
+  padding: 0.5rem 0.4rem;
+  color: var(--text-muted);
+  transition: color 0.5s ease, text-shadow 0.5s ease;
+}
+.logout-button:hover {
+  border: none;
+  color: var(--gold-light);
+  text-shadow: 0 0 12px rgba(236, 212, 154, 0.6);
+}
+.language-dropdown {
+  appearance: none;
+  -webkit-appearance: none;
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0.35rem 0.2rem;
+  font-size: 1.15rem;
+  cursor: pointer;
+  opacity: 0.75;
+  transition: opacity 0.4s ease, filter 0.4s ease;
+}
+.language-dropdown:hover,
+.language-dropdown:focus-visible {
+  opacity: 1;
+  outline: none;
+  filter: drop-shadow(0 0 6px rgba(236, 212, 154, 0.6));
+}
+.language-dropdown option {
+  background: #0b0907;
+  color: var(--text);
+}
