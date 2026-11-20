@@ -99,6 +99,7 @@ export function TheForge() {
     <main className="page-shell forge-page">
       <h1>{t('forge.title')}</h1>
       {!hasForge && <ForgeMission />}
+      {hasForge && <ProjectFolderGuide />}
       <p className="forge-lead">{t('forge.intro')}</p>
 
       {error && (
@@ -322,6 +323,7 @@ function ForgeRoom({ match, onBack, onLeave }: { match: ForgeMatch; onBack: () =
       )}
 
       {!canWrite && <RoomPaywall matchId={match.id} partner={match.other_nickname || '…'} />}
+      <ProjectFolderGuide />
 
       <div className="entry-editor chat-editor">
         <div className="chat-window" ref={listRef} role="log" aria-live="polite">
@@ -381,7 +383,185 @@ function ForgeRoom({ match, onBack, onLeave }: { match: ForgeMatch; onBack: () =
       </div>
 
       <RoomArchive matchId={match.id} canUpload={canWrite} />
+      <LiriaPanel matchId={match.id} />
     </>
+  );
+}
+
+/** Cosa si può fare nella cartella del progetto: spiegazione che si apre e si chiude. */
+function ProjectFolderGuide({ open = false }: { open?: boolean }) {
+  const { t } = useTranslation();
+  return (
+    <details className="card forge-folder-guide" open={open}>
+      <summary>{t('forge.folder.title')}</summary>
+      <ul>
+        <li>{t('forge.folder.room')}</li>
+        <li>{t('forge.folder.archive')}</li>
+        <li>{t('forge.folder.elayra')}</li>
+        <li>{t('forge.folder.liria')}</li>
+        <li>{t('forge.folder.sponsor')}</li>
+      </ul>
+    </details>
+  );
+}
+
+type LiriaInfo = { eligible: boolean; email: string; discountCode: string | null };
+
+/**
+ * Secretary Liria, la softwarehouse della Forgia: Elayra mette in ordine la stanza in un brief,
+ * la persona lo legge e lo corregge, poi lo conferma e lo manda a Liria per email.
+ */
+function LiriaPanel({ matchId }: { matchId: string }) {
+  const { t } = useTranslation();
+  const { refresh } = useAccount();
+  const [info, setInfo] = useState<LiriaInfo | null>(null);
+  const [notes, setNotes] = useState('');
+  const [brief, setBrief] = useState('');
+  const [subject, setSubject] = useState('');
+  const [busy, setBusy] = useState<'none' | 'brief' | 'send'>('none');
+  const [error, setError] = useState('');
+  const [sent, setSent] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    apiGet<LiriaInfo>('/api/forge/liria')
+      .then(setInfo)
+      .catch(() => setInfo(null));
+  }, []);
+
+  if (!info) return null;
+
+  const prepare = async () => {
+    setBusy('brief');
+    setError('');
+    setSent(false);
+    try {
+      const data = await apiPost<{ brief: string; subject: string }>(`/api/forge/matches/${matchId}/liria/brief`, { notes });
+      setBrief(data.brief);
+      setSubject(data.subject);
+      void refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('chat.error.generic'));
+    } finally {
+      setBusy('none');
+    }
+  };
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(brief);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2500);
+    } catch {
+      /* il testo resta selezionabile nel riquadro */
+    }
+  };
+
+  const confirmAndSend = async () => {
+    if (!brief.trim()) return;
+    setBusy('send');
+    setError('');
+    try {
+      await apiPost(`/api/forge/matches/${matchId}/liria/confirm`, { brief });
+      const intro = t('forge.liria.mailIntro');
+      const signoff = info.discountCode ? `\n\n${t('forge.liria.mailCode', { code: info.discountCode })}` : '';
+      let body = `${intro}\n\n${brief}${signoff}`;
+      // Alcuni programmi di posta tagliano i link troppo lunghi: in quel caso il brief si incolla a mano.
+      if (body.length > 1800) {
+        await copy();
+        body = `${intro}\n\n${t('forge.liria.pasteHere')}${signoff}`;
+      }
+      window.location.href = `mailto:${info.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      setSent(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('chat.error.generic'));
+    } finally {
+      setBusy('none');
+    }
+  };
+
+  return (
+    <section className="card liria-panel" aria-labelledby="liria-title">
+      <p className="forge-mission-kicker">Secretary Liria</p>
+      <h2 id="liria-title">{t('forge.liria.title')}</h2>
+      <p>{t('forge.liria.lead')}</p>
+      <ol className="liria-steps">
+        <li>{t('forge.liria.step1')}</li>
+        <li>{t('forge.liria.step2')}</li>
+        <li>{t('forge.liria.step3')}</li>
+      </ol>
+
+      {!info.eligible ? (
+        <p className="liria-locked">
+          {t('forge.liria.locked')}{' '}
+          <a href="/plans">{t('profile.changePlan')}</a>
+        </p>
+      ) : (
+        <>
+          <p className="liria-discount">
+            {info.discountCode ? t('forge.liria.discount', { code: info.discountCode }) : t('forge.liria.discountSoon')}
+          </p>
+          {!brief && (
+            <div className="form-group">
+              <label htmlFor="liria-notes">{t('forge.liria.notesLabel')}</label>
+              <textarea
+                id="liria-notes"
+                className="journal-textarea"
+                rows={3}
+                maxLength={2000}
+                placeholder={t('forge.liria.notesPlaceholder')}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+              />
+            </div>
+          )}
+          {brief && (
+            <div className="form-group">
+              <label htmlFor="liria-brief">{t('forge.liria.reviewLabel')}</label>
+              <textarea
+                id="liria-brief"
+                className="journal-textarea liria-brief"
+                rows={14}
+                maxLength={8000}
+                value={brief}
+                onChange={(e) => setBrief(e.target.value)}
+              />
+            </div>
+          )}
+          <div className="profile-actions">
+            <button type="button" className={`cta-button ${brief ? 'secondary' : 'primary'}`} disabled={busy !== 'none'} onClick={() => void prepare()}>
+              {busy === 'brief' ? t('forge.liria.preparing') : brief ? t('forge.liria.redo') : t('forge.liria.prepare')}
+            </button>
+            {brief && (
+              <>
+                <button type="button" className="cta-button primary" disabled={busy !== 'none' || !brief.trim()} onClick={() => void confirmAndSend()}>
+                  {t('forge.liria.send')}
+                </button>
+                <button type="button" className="forge-link" onClick={() => void copy()}>
+                  {copied ? t('forge.liria.copied') : t('forge.liria.copy')}
+                </button>
+              </>
+            )}
+          </div>
+          {sent && (
+            <p className="profile-ok" role="status">
+              {t('forge.liria.sent', { email: info.email })}
+            </p>
+          )}
+        </>
+      )}
+      {error && (
+        <p className="page-error" role="alert">
+          {error}
+        </p>
+      )}
+      <p className="profile-muted profile-small">
+        {t('forge.liria.more')}{' '}
+        <a href="https://secretaryliria.com/" target="_blank" rel="noreferrer">
+          secretaryliria.com
+        </a>
+      </p>
+    </section>
   );
 }
 

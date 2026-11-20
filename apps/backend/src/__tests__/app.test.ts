@@ -461,9 +461,16 @@ describe('piani, pagamenti e Forgia a pagamento', () => {
     const res = await request(app).post('/api/onboarding').set(authed).send({ nickname: 'Ada', age: 16 });
     expect(res.status).toBe(400);
     expect(rpcCalls).not.toContain('complete_onboarding');
-    const ok = await request(app).post('/api/onboarding').set(authed).send({ nickname: 'Ada', age: 30, referralCode: 'xyz' });
+    const noConsent = await request(app).post('/api/onboarding').set(authed).send({ nickname: 'Ada', age: 30 });
+    expect(noConsent.status).toBe(400);
+    expect(rpcCalls).not.toContain('complete_onboarding');
+    adminCalls.length = 0;
+    const ok = await request(app).post('/api/onboarding').set(authed).send({ nickname: 'Ada', age: 30, referralCode: 'xyz', consent: true });
     expect(ok.status).toBe(204);
     expect(rpcCalls).toContain('complete_onboarding');
+    const consent = adminCalls.find((c) => c.path.startsWith('/rest/v1/profiles') && c.method === 'PATCH');
+    expect(consent?.path).toContain('id=eq.user-1');
+    expect(consent?.body.consented_at).toBeTruthy();
   });
 
   it('senza Stripe configurato il pagamento risponde 503 invece di rompersi', async () => {
@@ -503,6 +510,34 @@ describe('piani, pagamenti e Forgia a pagamento', () => {
     expect(prompt).toContain('Lumira ti chiede: riassumi le decisioni');
     expect(forgeMessages.map((m) => m.role)).toEqual(['user', 'user', 'elayra']);
     expect(usage).toEqual([{ kind: 'forge', model: 'claude-sonnet-5-5' }]);
+  });
+
+  it('Liria: codice sconto e brief solo da Part time; il brief confermato resta nella stanza', async () => {
+    currentPlan = 'forgia';
+    const free = await request(app).get('/api/forge/liria').set(authed);
+    expect(free.body).toMatchObject({ eligible: false, discountCode: null, email: 'Liria@SecretaryLiria.com' });
+    const locked = await request(app).post(`/api/forge/matches/${ROOM}/liria/brief`).set(authed).send({});
+    expect(locked.status).toBe(402);
+
+    currentPlan = 'part';
+    expect((await request(app).get('/api/forge/liria').set(authed)).body.eligible).toBe(true);
+    myMatches = [{ id: ROOM, topic: 'giochi', is_open: true, other_nickname: 'Bea', my_status: 'accepted', their_status: 'accepted' }];
+    adminMatches = [{ user_a: 'user-1', user_b: 'user-2', topic: 'giochi' }];
+    forgeMessages = [{ id: 'm1', sender_id: 'user-2', role: 'user', content: 'Serve una pagina con le regole', created_at: '2026-11-17T10:00:00Z' }];
+    const brief = await request(app).post(`/api/forge/matches/${ROOM}/liria/brief`).set(authed).send({ notes: 'colori caldi' });
+    expect(brief.status).toBe(200);
+    expect(brief.body.subject).toBe('Elayra · giochi');
+    const prompt = createCalls[createCalls.length - 1].messages[0].content as string;
+    expect(prompt).toContain('Bea: Serve una pagina con le regole');
+    expect(prompt).toContain('colori caldi');
+
+    const before = forgeMessages.length;
+    const ok = await request(app).post(`/api/forge/matches/${ROOM}/liria/confirm`).set(authed).send({ brief: 'PROGETTO: giochi' });
+    expect(ok.status).toBe(201);
+    expect(forgeMessages.length).toBe(before + 1);
+    expect(forgeMessages[forgeMessages.length - 1]).toMatchObject({ role: 'elayra' });
+    expect(forgeMessages[forgeMessages.length - 1].content).toContain('PROGETTO: giochi');
+    expect((await request(app).post(`/api/forge/matches/${ROOM}/liria/confirm`).set(authed).send({ brief: ' ' })).status).toBe(400);
   });
 
   it('il claim di una costellazione traduce gli errori del database in messaggi chiari', async () => {

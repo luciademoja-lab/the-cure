@@ -192,6 +192,7 @@ function Onboarding({ defaultNickname, onDone }: { defaultNickname: string; onDo
   const { t } = useTranslation();
   const [nickname, setNickname] = useState(defaultNickname);
   const [age, setAge] = useState('');
+  const [consent, setConsent] = useState(false);
   const [referral, setReferral] = useState(() => pendingReferral());
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -202,9 +203,10 @@ function Onboarding({ defaultNickname, onDone }: { defaultNickname: string; onDo
     const years = Number(age);
     if (nickname.trim().length < 2) return setError(t('onboarding.errors.nickname'));
     if (!Number.isInteger(years) || years < 18 || years > 120) return setError(t('onboarding.errors.age'));
+    if (!consent) return setError(t('onboarding.errors.consent'));
     setBusy(true);
     try {
-      await apiPost('/api/onboarding', { nickname: nickname.trim(), age: years, referralCode: referral.trim() || undefined });
+      await apiPost('/api/onboarding', { nickname: nickname.trim(), age: years, referralCode: referral.trim() || undefined, consent: true });
       clearReferral();
       await onDone();
     } catch (err) {
@@ -234,6 +236,20 @@ function Onboarding({ defaultNickname, onDone }: { defaultNickname: string; onDo
             <label htmlFor="ob-ref">{t('onboarding.referral')}</label>
             <input id="ob-ref" maxLength={16} value={referral} onChange={(e) => setReferral(e.target.value)} />
           </div>
+          <label className="consent-check">
+            <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
+            <span>
+              {t('onboarding.consentBefore')}{' '}
+              <a href="/termini" target="_blank" rel="noreferrer">
+                {t('footer.terms')}
+              </a>{' '}
+              {t('onboarding.consentAnd')}{' '}
+              <a href="/privacy" target="_blank" rel="noreferrer">
+                {t('footer.privacy')}
+              </a>
+              {t('onboarding.consentAfter')}
+            </span>
+          </label>
           {error && <div className="error-message submit-error">{error}</div>}
           <button type="submit" className="auth-button primary" disabled={busy}>
             {t('onboarding.submit')}

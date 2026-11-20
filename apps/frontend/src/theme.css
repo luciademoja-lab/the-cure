@@ -1495,7 +1495,7 @@ a {
 .landing-subtitle.subtitle {
   position: fixed;
   left: 50%;
-  bottom: 1.4rem;
+  bottom: 2.9rem;
   transform: translateX(-50%);
   margin: 0;
   width: max-content;
@@ -1985,4 +1985,218 @@ a {
 .profile-ok {
   color: var(--gold-light);
   margin: 0.75rem 0 0;
+}
+
+/* ── Forgia: cartella progetto e Liria ─────────────────── */
+.forge-folder-guide {
+  margin: 1rem 0 1.25rem;
+}
+.forge-folder-guide summary {
+  cursor: pointer;
+  color: var(--gold-light);
+  letter-spacing: 0.04em;
+}
+.forge-folder-guide ul,
+.liria-steps {
+  margin: 0.8rem 0 0;
+  padding-left: 1.2rem;
+  line-height: 1.75;
+  color: var(--text-body);
+}
+.liria-panel {
+  margin-top: 1.5rem;
+  background: radial-gradient(120% 140% at 100% 0%, rgba(207, 165, 74, 0.12), transparent 60%);
+}
+.liria-panel h2 {
+  margin: 0.25rem 0 0.75rem;
+}
+.liria-discount {
+  margin: 1rem 0;
+  color: var(--gold-light);
+  text-shadow: 0 0 10px rgba(236, 212, 154, 0.35);
+}
+.liria-locked {
+  margin-top: 1rem;
+  color: var(--text-muted);
+}
+.liria-brief {
+  font-family: var(--font-body);
+  line-height: 1.6;
+}
+
+/* ── Footer, FAQ, pagine legali, consenso ─────────────── */
+.site-footer {
+  position: relative;
+  z-index: 1;
+  margin-top: 4rem;
+  padding: 3rem 1.5rem 2.5rem;
+  background: linear-gradient(180deg, transparent, rgba(207, 165, 74, 0.05));
+}
+.site-footer-inner {
+  max-width: 1180px;
+  margin: 0 auto;
+  display: grid;
+  gap: 1.1rem;
+  justify-items: center;
+  text-align: center;
+}
+.site-footer-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--font-heading);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+}
+.site-footer-brand .sacred-symbol {
+  color: var(--gold);
+  filter: drop-shadow(0 0 6px rgba(236, 212, 154, 0.5));
+}
+.site-footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem 1.4rem;
+}
+.site-footer-links a {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.82rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: color 0.4s ease, text-shadow 0.4s ease;
+}
+.site-footer-links a:hover {
+  color: var(--gold-light);
+  text-shadow: 0 0 10px rgba(236, 212, 154, 0.5);
+}
+.site-footer-note,
+.site-footer-copy {
+  max-width: 640px;
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+/* Su telefono e computer il piccolo astro del menu non copre il footer. */
+@media (min-width: 900px) {
+  .site-footer {
+    padding-left: 140px;
+    padding-right: 140px;
+  }
+}
+@media (max-width: 899px) {
+  .site-footer {
+    padding-bottom: 130px;
+  }
+}
+
+.faq-page,
+.legal-page {
+  max-width: 820px;
+}
+.faq-group {
+  margin-top: 2rem;
+}
+.faq-group h2 {
+  font-size: 1.35rem;
+  margin-bottom: 0.6rem;
+}
+.faq-item {
+  padding: 0.95rem 1.1rem;
+  margin-bottom: 0.55rem;
+  border-radius: 14px;
+  background: rgba(207, 165, 74, 0.05);
+  transition: background 0.4s ease;
+}
+.faq-item[open] {
+  background: rgba(207, 165, 74, 0.09);
+}
+.faq-item summary {
+  cursor: pointer;
+  color: var(--gold-light);
+  font-family: var(--font-heading);
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+  list-style: none;
+}
+.faq-item summary::-webkit-details-marker {
+  display: none;
+}
+.faq-item summary::before {
+  content: '✦';
+  margin-right: 0.6rem;
+  font-size: 0.8rem;
+  color: var(--gold);
+}
+.faq-item p {
+  margin: 0.75rem 0 0;
+  line-height: 1.75;
+}
+.faq-more {
+  margin-top: 2rem;
+  color: var(--text-muted);
+}
+.legal-page h2 {
+  font-size: 1.25rem;
+  margin: 2rem 0 0.6rem;
+}
+.legal-page p,
+.legal-page li {
+  line-height: 1.75;
+  color: var(--text-body);
+}
+.legal-updated,
+.legal-lang {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+.contact-mail {
+  font-family: var(--font-heading);
+  font-size: 1.4rem;
+  margin: 1rem 0;
+}
+.consent-check {
+  display: flex;
+  gap: 0.7rem;
+  align-items: flex-start;
+  margin: 1rem 0 0.5rem;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--text-body);
+  text-align: left;
+}
+.consent-check input {
+  margin-top: 0.25rem;
+  accent-color: var(--gold);
+}
+
+.landing-legal {
+  position: fixed;
+  left: 50%;
+  bottom: 0.9rem;
+  transform: translateX(-50%);
+  z-index: 91;
+  display: flex;
+  gap: 1rem;
+  white-space: nowrap;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.landing-legal a {
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.4s ease;
+}
+.landing-legal a:hover {
+  color: var(--gold-light);
+}
+@media (max-width: 899px) {
+  .landing-legal {
+    gap: 0.7rem;
+    font-size: 0.62rem;
+  }
 }
