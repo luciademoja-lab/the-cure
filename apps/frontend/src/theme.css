@@ -2374,3 +2374,13 @@ html.is-home body {
   align-items: center;
   gap: 1rem;
 }
+
+/* Accesso solo con Google */
+.auth-google-note {
+  margin: 1rem auto 0;
+  max-width: 22rem;
+  text-align: center;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--text-muted, rgba(233, 223, 205, 0.6));
+}
