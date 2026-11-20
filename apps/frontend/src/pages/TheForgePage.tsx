@@ -76,6 +76,8 @@ export function TheForge() {
     run(() => apiPost<ForgeState>(`/api/forge/matches/${id}/respond`, { accept }));
 
   const profile = state?.profile || null;
+  const { account } = useAccount();
+  const hasForge = Boolean(planOf(account)?.forgeRooms);
   const room = state?.matches.find((m) => m.id === roomId && m.is_open) || null;
 
   if (room) {
@@ -96,6 +98,7 @@ export function TheForge() {
   return (
     <main className="page-shell forge-page">
       <h1>{t('forge.title')}</h1>
+      {!hasForge && <ForgeMission />}
       <p className="forge-lead">{t('forge.intro')}</p>
 
       {error && (
@@ -383,6 +386,24 @@ function ForgeRoom({ match, onBack, onLeave }: { match: ForgeMatch; onBack: () =
 }
 
 /** Chi non ha ancora il piano Forgia può leggere ma non scrivere: può attivarlo per sé o per entrambi con lo sconto. */
+/** Per chi non ha ancora un piano con la Forgia: la sua missione, e come aiutarsi a vicenda. */
+function ForgeMission() {
+  const { t } = useTranslation();
+  return (
+    <section className="card forge-mission" aria-labelledby="forge-mission-title">
+      <p className="forge-mission-kicker">{t('forge.mission.kicker')}</p>
+      <h2 id="forge-mission-title">{t('forge.mission.title')}</h2>
+      <p>{t('forge.mission.p1')}</p>
+      <p>{t('forge.mission.p2')}</p>
+      <p className="forge-mission-gift">{t('forge.mission.p3')}</p>
+      <p>{t('forge.mission.p4')}</p>
+      <a className="cta-button primary" href="/plans">
+        {t('forge.mission.cta')}
+      </a>
+    </section>
+  );
+}
+
 function RoomPaywall({ matchId, partner }: { matchId: string; partner: string }) {
   const { t } = useTranslation();
   const { account } = useAccount();
