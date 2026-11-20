@@ -7,7 +7,8 @@ import { SuccessModal } from '../atoms/SuccessModal';
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { apiGet } from '../../lib/api';
-import type { PlanId } from '../../contexts/AccountContext';
+import type { AvatarKind, PlanId } from '../../contexts/AccountContext';
+import { UserAvatar } from '../atoms/UserAvatar';
 
 export function Navbar() {
   const location = useLocation();
@@ -15,22 +16,38 @@ export function Navbar() {
   const { t } = useTranslation();
   const { isAuthenticated, logout, user } = useAuth();
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [plan, setPlan] = useState<PlanId | null>(null);
+  const [me, setMe] = useState<{ plan: PlanId; nickname: string; avatarKind: AvatarKind | null; avatarPath: string | null } | null>(
+    null
+  );
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [refreshTick, setRefreshTick] = useState(0);
+  const plan = me?.plan ?? null;
+
+  // Il profilo avvisa quando nome o immagine cambiano.
+  useEffect(() => {
+    const onChange = () => setRefreshTick((n) => n + 1);
+    window.addEventListener('elayra:account-changed', onChange);
+    return () => window.removeEventListener('elayra:account-changed', onChange);
+  }, []);
+
+  useEffect(() => setMenuOpen(false), [location.pathname]);
 
   // Il piano attuale, solo dopo la 2FA (prima il server non risponde). Si ricarica cambiando pagina,
   // così dopo un acquisto il pulsante sparisce.
   useEffect(() => {
     if (!isAuthenticated) {
-      setPlan(null);
+      setMe(null);
       return;
     }
     let alive = true;
     void (async () => {
       try {
-        const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-        if (data?.currentLevel !== 'aal2') return;
-        const me = await apiGet<{ plan: PlanId }>('/api/me');
-        if (alive) setPlan(me.plan);
+        const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (aal?.currentLevel !== 'aal2') return;
+        const data = await apiGet<{ plan: PlanId; nickname: string; avatarKind: AvatarKind | null; avatarPath: string | null }>(
+          '/api/me'
+        );
+        if (alive) setMe(data);
       } catch {
         /* il pulsante resta nascosto */
       }
@@ -38,8 +55,9 @@ export function Navbar() {
     return () => {
       alive = false;
     };
-  }, [isAuthenticated, user?.id, location.pathname]);
+  }, [isAuthenticated, user?.id, location.pathname, refreshTick]);
 
+  const displayName = me?.nickname || user?.nickname || '';
   const canUpgrade = isAuthenticated && plan !== null && plan !== 'h24';
 
   const publicLinks: { path: string; label: string }[] = [];
@@ -84,29 +102,76 @@ export function Navbar() {
           ))}
         </ul>
         <div className="navbar-actions">
-          {isAuthenticated ? (
-            <div className="user-menu">
-              {canUpgrade && (
-                <button type="button" className="upgrade-button" onClick={() => navigate('/plans')}>
-                  {t('nav.upgrade')}
-                </button>
-              )}
-              <span className="user-email">{user?.nickname}</span>
-              <button onClick={handleLogout} className="logout-button">
-                Logout
-              </button>
-            </div>
-          ) : (
-            <div className="auth-links">
-              <NavLink to="/login" isActive={location.pathname === '/login'}>
-                Login
-              </NavLink>
-              <NavLink to="/register" isActive={location.pathname === '/register'}>
-                Sign Up
-              </NavLink>
-            </div>
+          {canUpgrade && (
+            <button type="button" className="upgrade-button" onClick={() => navigate('/plans')}>
+              {t('nav.upgrade')}
+            </button>
           )}
+          {/* Computer: nome e immagine portano al profilo. */}
+          <div className="navbar-account-inline">
+            {isAuthenticated ? (
+              <>
+                <button type="button" className="navbar-profile-link" onClick={() => navigate('/profile')}>
+                  <UserAvatar kind={me?.avatarKind ?? null} path={me?.avatarPath ?? null} name={displayName} size={30} />
+                  <span className="user-email">{displayName}</span>
+                </button>
+                <button onClick={handleLogout} className="logout-button">
+                  Logout
+                </button>
+              </>
+            ) : (
+              <div className="auth-links">
+                <NavLink to="/login" isActive={location.pathname === '/login'}>
+                  Login
+                </NavLink>
+                <NavLink to="/register" isActive={location.pathname === '/register'}>
+                  Sign Up
+                </NavLink>
+              </div>
+            )}
+          </div>
           <LanguageSelector />
+          {/* Telefono: tutto nella tendina che si apre dall'icona utente. */}
+          <div className="navbar-account-menu">
+            <button
+              type="button"
+              className="navbar-user-button"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              aria-label={t('nav.account')}
+              onClick={() => setMenuOpen((v) => !v)}
+            >
+              {isAuthenticated ? (
+                <UserAvatar kind={me?.avatarKind ?? null} path={me?.avatarPath ?? null} name={displayName} size={30} />
+              ) : (
+                <UserIcon />
+              )}
+            </button>
+            {menuOpen && (
+              <div className="navbar-user-dropdown" role="menu">
+                {isAuthenticated ? (
+                  <>
+                    <button type="button" role="menuitem" onClick={() => navigate('/profile')}>
+                      {displayName}
+                      <span className="navbar-user-sub">{t('nav.profile')}</span>
+                    </button>
+                    <button type="button" role="menuitem" onClick={handleLogout}>
+                      Logout
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button type="button" role="menuitem" onClick={() => navigate('/login')}>
+                      Login
+                    </button>
+                    <button type="button" role="menuitem" onClick={() => navigate('/register')}>
+                      Sign Up
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
       {showSuccessModal && (
@@ -116,5 +181,14 @@ export function Navbar() {
         />
       )}
     </nav>
+  );
+}
+
+function UserIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <circle cx="12" cy="8.5" r="3.6" fill="none" stroke="currentColor" strokeWidth="1.7" />
+      <path d="M4.5 20c1.4-3.6 4.3-5.3 7.5-5.3s6.1 1.7 7.5 5.3" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
   );
 }

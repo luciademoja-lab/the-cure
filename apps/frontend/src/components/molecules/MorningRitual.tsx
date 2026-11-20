@@ -1,6 +1,8 @@
 import { DailyRitual } from '../../types/dailyPractice';
-import { VoiceRecorder } from '../atoms/VoiceRecorder';
+import { useState } from 'react';
 import { useTranslation } from '../../i18n/I18nProvider';
+import { DictationButton } from '../atoms/DictationButton';
+import { appendDictated } from '../../hooks/useDictation';
 
 type MorningRitualProps = {
   ritual?: DailyRitual;
@@ -9,12 +11,11 @@ type MorningRitualProps = {
 
 export function MorningRitual({ ritual, onComplete }: MorningRitualProps) {
   const { t } = useTranslation();
+  const [text, setText] = useState('');
 
   const handleTextSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const response = formData.get('response') as string;
-    onComplete?.(response);
+    onComplete?.(text);
   };
 
   return (
@@ -38,15 +39,12 @@ export function MorningRitual({ ritual, onComplete }: MorningRitualProps) {
             placeholder={t('morning.textareaPlaceholder')}
             className="ritual-textarea"
             rows={4}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
           />
+          <DictationButton onText={(piece) => setText((prev) => appendDictated(prev, piece))} />
 
           <p className="ritual-hint">{t('morning.voiceHint')}</p>
-          <VoiceRecorder
-            onTranscription={(text) => {
-              const textarea = document.querySelector('.ritual-textarea') as HTMLTextAreaElement;
-              if (textarea) textarea.value = text;
-            }}
-          />
 
           <button type="submit" className="ritual-btn">
             {t('morning.activateButton')}

@@ -45,6 +45,15 @@ export function SynchronicitiesPage() {
       <div className="page-header">
         <h1>{t('synchronicities.title')}</h1>
         <p className="subtitle">{t('synchronicities.subtitle')}</p>
+        <details className="sync-guide" open={entries.length < 2}>
+          <summary>{t('synchronicities.guide.title')}</summary>
+          <p>{t('synchronicities.guide.what')}</p>
+          <p>{t('synchronicities.guide.when')}</p>
+          <p>{t('synchronicities.guide.score')}</p>
+          {!entriesLoading && (
+            <p className="sync-guide-count">{t('synchronicities.guide.count', { count: entries.length })}</p>
+          )}
+        </details>
       </div>
 
       <div className="page-content">

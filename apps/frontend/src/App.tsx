@@ -16,6 +16,7 @@ import { RegisterPage } from './pages/RegisterPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { PlansPage } from './pages/PlansPage';
+import { ProfilePage } from './pages/ProfilePage';
 
 function App() {
   return (
@@ -57,6 +58,11 @@ function App() {
           <Route path="/plans" element={
             <ProtectedRoute>
               <PlansPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/profile" element={
+            <ProtectedRoute>
+              <ProfilePage />
             </ProtectedRoute>
           } />
           <Route path="/contatti" element={<Contatti />} />
