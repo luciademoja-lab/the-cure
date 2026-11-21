@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from '../i18n/I18nProvider';
 import { apiGet, apiPost } from '../lib/api';
 import { SacredSymbol, symbolForLevel } from '../components/atoms/SacredSymbol';
+import { PathGame } from '../components/path-games/PathGame';
+import { useAccount } from '../contexts/AccountContext';
 
 type Level = {
   level: number;
@@ -30,6 +32,8 @@ export function GamingPage() {
   const [savedLevel, setSavedLevel] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [hintOpen, setHintOpen] = useState<number | null>(null);
+  const [game, setGame] = useState<number | null>(null);
+  const { account } = useAccount();
 
   // Si ricarica anche quando si torna su questa scheda: i punti arrivano da diario e rituali.
   useEffect(() => {
@@ -68,6 +72,9 @@ export function GamingPage() {
     try {
       await apiPost('/api/progress/reflections', { level, response });
       setSavedLevel(level);
+      setProgress((prev) => (prev ? { ...prev, levels: prev.levels.map((l) => (l.level === level ? { ...l, response } : l)) } : prev));
+      // Dopo la risposta si apre il giochino del livello.
+      setGame(level);
     } catch (e) {
       setError(e instanceof Error ? e.message : t('chat.error.generic'));
     } finally {
@@ -188,6 +195,11 @@ export function GamingPage() {
                           {t('path.saved')}
                         </span>
                       )}
+                      {l.response && (
+                        <button type="button" className="path-play" onClick={() => setGame(l.level)}>
+                          {t('games.play')}
+                        </button>
+                      )}
                     </div>
                   </>
                 )}
@@ -195,6 +207,15 @@ export function GamingPage() {
             ))}
           </ol>
         </>
+      )}
+      {game !== null && progress && (
+        <PathGame
+          level={game}
+          levelName={progress.levels.find((l) => l.level === game)?.name || ''}
+          name={account?.nickname || ''}
+          response={progress.levels.find((l) => l.level === game)?.response || drafts[game] || ''}
+          onClose={() => setGame(null)}
+        />
       )}
     </main>
   );
