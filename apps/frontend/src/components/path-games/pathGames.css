@@ -1,0 +1,426 @@
+/* ═══════════ Giochini del Percorso ═══════════ */
+.path-game {
+  position: fixed;
+  inset: 0;
+  z-index: 320;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem 1rem 1.5rem;
+  background: radial-gradient(ellipse at center, #17110a 0%, #070504 75%);
+  color: var(--text-body);
+  animation: tarot-fade-in 0.6s ease;
+  overflow-y: auto;
+}
+.path-game-head {
+  width: min(760px, 100%);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.path-game-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-heading);
+  color: var(--gold-light);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+}
+.path-game-close {
+  border: none;
+  background: none;
+  color: var(--gold-light);
+  font-size: 1.9rem;
+  cursor: pointer;
+}
+.path-game-hint {
+  max-width: 30rem;
+  margin: 0.8rem auto 0.4rem;
+  text-align: center;
+  font-family: var(--font-heading);
+  color: var(--text-muted);
+}
+.path-game-stage {
+  flex: 1;
+  width: min(640px, 100%);
+  min-height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+}
+.path-game-skip {
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  text-decoration: underline;
+  cursor: pointer;
+  margin-top: 0.5rem;
+}
+.path-game-reveal {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.2rem;
+  max-width: 34rem;
+  text-align: center;
+}
+.path-game-reveal-sign {
+  color: var(--gold-light);
+  animation: tarot-breathe 3s ease-in-out infinite;
+}
+.path-game-reveal-text {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: clamp(1.4rem, 5vw, 2.1rem);
+  line-height: 1.35;
+  color: var(--gold-light);
+  text-shadow: 0 0 24px rgba(236, 210, 154, 0.45);
+  animation: tarot-fade-in 2s ease;
+}
+.path-game-reveal-quote {
+  margin: 0;
+  padding: 0.8rem 1.1rem;
+  border-left: 2px solid var(--gold);
+  color: var(--text-body);
+  font-style: italic;
+  text-align: left;
+  animation: tarot-fade-in 3s ease;
+}
+.path-game-reveal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  justify-content: center;
+}
+.path-play {
+  border: none;
+  background: none;
+  color: var(--gold-light);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+/* Elementi comuni */
+.game-svg {
+  width: 100%;
+  max-height: 62vh;
+  overflow: visible;
+}
+.game-dot {
+  fill: #ecd29a;
+  filter: drop-shadow(0 0 6px rgba(236, 210, 154, 0.9));
+}
+.game-glow {
+  fill: rgba(236, 210, 154, 0.35);
+  filter: blur(18px);
+}
+.game-note {
+  min-height: 1.5em;
+  margin: 0.6rem 0 0;
+  text-align: center;
+  color: var(--gold-light);
+  font-family: var(--font-heading);
+}
+.corridor-line {
+  fill: none;
+  stroke: rgba(207, 165, 74, 0.45);
+  stroke-width: 1.2;
+}
+
+/* 2. L'Ascolto */
+.listening {
+  width: 100%;
+}
+.listening-field {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+}
+.listening-light {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  margin: -11px;
+  border: none;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff6da 0%, #ecd29a 45%, rgba(236, 210, 154, 0) 70%);
+  cursor: pointer;
+  animation-name: listen-pulse;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+}
+.listening-light.is-faded {
+  opacity: 0.12 !important;
+  animation: none;
+}
+.listening-light.is-found {
+  animation: listen-found 1.6s ease forwards;
+}
+@keyframes listen-pulse {
+  0%, 100% { transform: scale(0.6); opacity: 0.45; }
+  50% { transform: scale(1.25); opacity: 1; }
+}
+@keyframes listen-found {
+  to { transform: scale(6); opacity: 0; }
+}
+
+/* 3. Il Cerchio */
+.circle-ghost {
+  fill: none;
+  stroke: rgba(207, 165, 74, 0.15);
+  stroke-width: 2;
+  stroke-dasharray: 3 5;
+}
+.circle-piece {
+  fill: none;
+  stroke: #ecd29a;
+  stroke-width: 7;
+  stroke-linecap: round;
+  cursor: pointer;
+  transition: d 0.5s ease, stroke 0.3s ease;
+  filter: drop-shadow(0 0 4px rgba(236, 210, 154, 0.5));
+}
+.circle-piece.is-crowded {
+  stroke: rgba(236, 210, 154, 0.55);
+}
+.circle-piece.is-closed {
+  filter: drop-shadow(0 0 14px rgba(255, 236, 180, 1));
+}
+.circle-name {
+  fill: var(--gold-light);
+  font-family: var(--font-heading);
+  font-size: 26px;
+  animation: tarot-fade-in 1.4s ease;
+}
+
+/* 4. Lo Specchio */
+.mirror {
+  width: min(420px, 100%);
+}
+.mirror-frame {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  border: 2px solid var(--gold);
+  border-radius: 50% 50% 14px 14px / 30% 30% 14px 14px;
+  overflow: hidden;
+  background: linear-gradient(160deg, #1b150d, #0b0805);
+  box-shadow: 0 0 40px rgba(207, 165, 74, 0.2);
+}
+.mirror-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 2rem;
+  text-align: center;
+  font-family: var(--font-heading);
+  font-size: 1.15rem;
+  color: var(--gold-light);
+  transform: scaleX(-1);
+  transition: transform 1.6s ease 0.6s;
+}
+.mirror-text.is-true {
+  transform: scaleX(1);
+}
+.mirror-fog {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+  touch-action: none;
+  transition: opacity 1.2s ease;
+}
+.mirror-fog.is-gone {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 5. La Soglia */
+.threshold {
+  width: 100%;
+  perspective: 1200px;
+}
+.threshold-scene {
+  position: relative;
+  aspect-ratio: 400 / 260;
+  transform-style: preserve-3d;
+  transition: transform 2.4s cubic-bezier(0.5, 0, 0.2, 1);
+}
+.threshold.is-turned .threshold-scene {
+  transform: rotateY(180deg);
+}
+.threshold-front,
+.threshold-back {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.threshold-back {
+  transform: rotateY(180deg);
+}
+.door {
+  cursor: pointer;
+}
+.door-frame {
+  fill: rgba(18, 14, 9, 0.9);
+  stroke: #cfa54a;
+  stroke-width: 1.4;
+}
+.door:hover .door-frame {
+  stroke: #ecd29a;
+}
+.door-dark {
+  fill: #000;
+}
+.door-knob {
+  fill: #ecd29a;
+}
+.corridor-end {
+  fill: rgba(236, 210, 154, 0.08);
+  stroke: rgba(207, 165, 74, 0.4);
+}
+.self {
+  cursor: pointer;
+}
+.self-line {
+  fill: none;
+  stroke: #ecd29a;
+  stroke-width: 2;
+  filter: drop-shadow(0 0 6px rgba(236, 210, 154, 0.6));
+}
+.self-door {
+  fill: rgba(236, 210, 154, 0.15);
+  stroke: #fff2c8;
+  stroke-width: 2;
+  animation: tarot-breathe 2.4s ease-in-out infinite;
+  transform-origin: 0 -12px;
+}
+.self-glow {
+  fill: rgba(255, 236, 180, 0.2);
+  filter: blur(14px);
+  opacity: 0.5;
+}
+.self.is-open .self-glow {
+  animation: self-light 2.6s ease forwards;
+}
+@keyframes self-light {
+  to { opacity: 1; transform: scale(8); fill: rgba(255, 246, 220, 0.9); }
+}
+.threshold-controls {
+  display: flex;
+  gap: 0.8rem;
+  justify-content: center;
+  margin-top: 0.6rem;
+}
+
+/* 6. La Fiamma */
+.flame-box {
+  width: min(420px, 100%);
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  touch-action: none;
+}
+.flame {
+  transform-origin: 0 20px;
+  transition: transform 0.25s ease;
+  animation: flame-flicker 0.18s ease-in-out infinite alternate;
+}
+.flame.is-bent {
+  animation: flame-bend 1.1s ease-in-out;
+}
+.flame-outer {
+  fill: rgba(236, 160, 60, 0.35);
+  stroke: #ecd29a;
+  stroke-width: 2;
+  filter: drop-shadow(0 0 14px rgba(255, 190, 90, 0.8));
+}
+.flame-inner {
+  fill: rgba(255, 246, 220, 0.85);
+}
+@keyframes flame-flicker {
+  from { filter: brightness(1); }
+  to { filter: brightness(1.15); }
+}
+@keyframes flame-bend {
+  50% { transform: skewX(-22deg) scale(0.9); }
+}
+.spark {
+  animation: spark-rise 1.4s ease-out infinite;
+}
+@keyframes spark-rise {
+  from { transform: translateY(40px); opacity: 1; }
+  to { transform: translateY(-30px); opacity: 0; }
+}
+
+/* 7. La Forgia */
+.forge-game {
+  width: min(420px, 100%);
+  text-align: center;
+}
+.forge-anvil {
+  width: 100%;
+  aspect-ratio: 1;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+}
+.forge-beat {
+  fill: none;
+  stroke: rgba(236, 210, 154, 0.6);
+  stroke-width: 2;
+  transform-origin: center;
+  animation: forge-beat linear infinite;
+}
+@keyframes forge-beat {
+  0% { transform: scale(0.35); opacity: 0.2; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.ingot {
+  fill: #e8862a;
+  stroke: #ffd38a;
+  stroke-width: 2;
+  filter: drop-shadow(0 0 18px rgba(255, 140, 40, 0.9));
+}
+.forge-sign {
+  fill: none;
+  stroke: #ecd29a;
+  stroke-width: 3;
+  filter: drop-shadow(0 0 10px rgba(236, 210, 154, 0.9));
+}
+.forge-sign-point {
+  fill: #ecd29a;
+}
+.forge-anvil.is-good .ingot {
+  fill: #ffcf70;
+}
+.forge-anvil.is-good svg {
+  animation: forge-shake 0.2s ease;
+}
+.forge-anvil.is-miss svg {
+  opacity: 0.75;
+}
+@keyframes forge-shake {
+  30% { transform: translateY(3px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .listening-light,
+  .flame,
+  .forge-beat,
+  .threshold-scene {
+    animation-duration: 3s !important;
+    transition-duration: 0.3s !important;
+  }
+}
