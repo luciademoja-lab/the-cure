@@ -27,7 +27,7 @@ function recognitionCtor(): RecognitionCtor | null {
   return w.SpeechRecognition || w.webkitSpeechRecognition || null;
 }
 
-export const speechLang = (locale: string) => (locale === 'it' ? 'it-IT' : locale === 'zh' ? 'zh-CN' : 'en-US');
+export const speechLang = (locale: string) => (locale === 'it' ? 'it-IT' : 'en-US');
 
 export function useDictation(opts: {
   locale: string;
