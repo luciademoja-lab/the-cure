@@ -2782,3 +2782,12 @@ html.is-home body {
     transition-duration: 0.01s !important;
   }
 }
+
+/* Gatti delle carte: pennellate piene d'oro */
+.tarot-cat {
+  fill: #ecd29a;
+  stroke: none;
+}
+.tarot-card-glyph--thin {
+  stroke-width: 1.4;
+}
