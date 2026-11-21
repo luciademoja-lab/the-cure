@@ -8,12 +8,11 @@ export function LanguageSelector() {
       <select
         id="language-select"
         value={locale}
-        onChange={(event) => setLocale(event.target.value as 'en' | 'it' | 'zh')}
+        onChange={(event) => setLocale(event.target.value as 'en' | 'it')}
         className="language-dropdown"
       >
         <option value="en">🇺🇸</option>
         <option value="it">🇮🇹</option>
-        <option value="zh">🇨🇳</option>
       </select>
     </div>
   );
