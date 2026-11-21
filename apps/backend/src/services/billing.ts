@@ -24,8 +24,16 @@ export async function priceIdFor(plan: PlanId): Promise<string> {
   const def = PLANS[plan];
   const key = def.stripeLookupKey;
   if (!key) throw new HttpError(400, 'Questo piano non si acquista');
-  const prices = await stripe().prices.list({ lookup_keys: [key], active: true, limit: 1 });
-  if (prices.data[0]) return prices.data[0].id;
+  const prices = await stripe().prices.list({ lookup_keys: [key], active: true, limit: 1, expand: ['data.product'] });
+  const existing = prices.data[0];
+  if (existing) {
+    // Prodotti creati prima del codice fiscale: lo si aggiunge, altrimenti Managed Payments rifiuta il pagamento.
+    const product = existing.product as Stripe.Product | string;
+    if (typeof product !== 'string' && !product.deleted && !product.tax_code) {
+      await stripe().products.update(product.id, { tax_code: DIGITAL_TAX_CODE });
+    }
+    return existing.id;
+  }
   const product = await stripe().products.create({
     name: `Elayra — ${def.name}`,
     tax_code: DIGITAL_TAX_CODE,
