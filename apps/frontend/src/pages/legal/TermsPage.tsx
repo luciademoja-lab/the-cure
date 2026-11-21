@@ -42,6 +42,8 @@ function TermsPageIt() {
         <li>Puoi disdire in qualsiasi momento dal Profilo: l’abbonamento resta attivo fino alla fine del periodo già pagato.</li>
         <li>Pagando per un’altra persona della Forgia attivi due abbonamenti con il 20% di sconto sul totale; l’abbonamento dell’altra persona termina se disdici il tuo pagamento.</li>
         <li>I mesi gratuiti ottenuti con le costellazioni del Collettivo non sono convertibili in denaro.</li>
+        <li>Il report mensile di Elayra è incluso nei piani a pagamento; con il piano gratuito si acquista singolarmente (0,99 € per mese), con un pagamento unico e non ricorrente.</li>
+        <li>Le letture dei tarocchi sono un dono per chi completa le pratiche del giorno: sono uno strumento di riflessione personale, non previsioni né consigli.</li>
         <li>
           Diritto di recesso: chiedendo di attivare subito il servizio digitale riconosci che, una volta iniziata la
           fornitura, il recesso di 14 giorni previsto dal Codice del Consumo non si applica al periodo già goduto. Per
@@ -123,6 +125,8 @@ function TermsPageEn() {
         <li>You can cancel at any time from your Profile: the subscription stays active until the end of the period already paid.</li>
         <li>Paying for another person in the Forge activates two subscriptions with 20% off the total; the other person’s subscription ends if you cancel your payment.</li>
         <li>Free months earned with the constellations of the Collective cannot be exchanged for money.</li>
+        <li>Elayra’s monthly report is included in paid plans; with the free plan it can be bought one month at a time (€0.99 per month) with a single, non-recurring payment.</li>
+        <li>Tarot readings are a gift for completing the daily practices: they are a tool for personal reflection, not predictions or advice.</li>
         <li>
           Right of withdrawal: by asking for the digital service to start immediately you acknowledge that, once the service
           has begun, the 14-day withdrawal right under consumer law does not apply to the period already used. For billing

@@ -97,6 +97,48 @@ export async function createCheckout(opts: {
   return session.url;
 }
 
+/** Prezzo del report mensile per chi ha il piano gratuito. */
+export const REPORT_PRICE_CENTS = 99;
+
+/** Pagamento singolo (non un abbonamento) per il report di un mese. */
+export async function createReportCheckout(opts: { userId: string; email?: string; month: string }): Promise<string> {
+  const customer = await customerIdFor(opts.userId);
+  const metadata = { user_id: opts.userId, kind: 'report', month: opts.month };
+  const session = await stripe().checkout.sessions.create({
+    mode: 'payment',
+    client_reference_id: opts.userId,
+    ...(customer ? { customer } : opts.email ? { customer_email: opts.email } : {}),
+    line_items: [
+      {
+        quantity: 1,
+        price_data: {
+          currency: 'eur',
+          unit_amount: REPORT_PRICE_CENTS,
+          product_data: { name: `Elayra — Report ${opts.month.slice(0, 7)}` },
+        },
+      },
+    ],
+    metadata,
+    payment_intent_data: { metadata },
+    success_url: `${config.appUrl}/tarot?report=${opts.month.slice(0, 7)}&checkout=success`,
+    cancel_url: `${config.appUrl}/tarot?checkout=cancel`,
+  });
+  if (!session.url) throw new HttpError(502, 'Stripe non ha restituito la pagina di pagamento');
+  return session.url;
+}
+
+/** Registra un report pagato. Rilanciarlo con la stessa sessione non duplica nulla. */
+export async function recordReportPurchase(session: Stripe.Checkout.Session): Promise<void> {
+  const userId = session.metadata?.user_id;
+  const month = session.metadata?.month;
+  if (!userId || !month || !/^\d{4}-\d{2}-01$/.test(month) || session.payment_status !== 'paid') return;
+  await adminDb('report_purchases?on_conflict=stripe_session_id', {
+    method: 'POST',
+    body: { user_id: userId, month, stripe_session_id: session.id },
+    prefer: 'resolution=ignore-duplicates',
+  });
+}
+
 export async function createPortal(userId: string): Promise<string> {
   const customer = await customerIdFor(userId);
   if (!customer) throw new HttpError(404, 'Non hai ancora un abbonamento');
@@ -155,8 +197,13 @@ export async function handleWebhook(rawBody: Buffer, signature: string | undefin
   }
 
   switch (event.type) {
-    case 'checkout.session.completed': {
+    case 'checkout.session.completed':
+    case 'checkout.session.async_payment_succeeded': {
       const session = event.data.object as Stripe.Checkout.Session;
+      if (session.metadata?.kind === 'report') {
+        await recordReportPurchase(session);
+        break;
+      }
       const subId = typeof session.subscription === 'string' ? session.subscription : session.subscription?.id;
       if (subId) await syncSubscription(await stripe().subscriptions.retrieve(subId));
       break;

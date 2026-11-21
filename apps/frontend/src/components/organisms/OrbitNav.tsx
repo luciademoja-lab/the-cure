@@ -47,6 +47,7 @@ export function OrbitNav() {
   const links = [
     { path: '/journal', label: t('nav.journal') },
     { path: '/daily-light', label: t('nav.dailyLight') },
+    { path: '/tarot', label: t('nav.tarot') },
     { path: '/gaming', label: t('nav.path') },
     { path: '/synchronicities', label: t('nav.synchronicities') },
     { path: '/forge', label: t('nav.forge') },

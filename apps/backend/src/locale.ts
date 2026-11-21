@@ -77,6 +77,10 @@ const EN: Record<string, string> = {
   'Stripe non ha restituito la pagina di pagamento': 'Stripe did not return the payment page',
   'Supabase non configurato sul server': 'Supabase is not configured on the server',
   'Testo non valido': 'Invalid text',
+  'La lettura si apre quando completi entrambe le pratiche del giorno': 'The reading opens when you complete both practices of the day',
+  'Questo report è già tuo': 'This report is already yours',
+  'Il report di questo mese si sblocca con 0,99 € o con un piano a pagamento': 'This month’s report unlocks for €0.99 or with a paid plan',
+  'In questo mese non c’è ancora niente da raccontare: scrivi nel diario o fai le pratiche, poi torna qui': 'There is nothing to tell for this month yet: write in your journal or do the practices, then come back',
   'In questo momento non riesco a risponderti. Riprova tra poco.': 'I can’t answer you right now. Please try again in a moment.',
 };
 

@@ -24,7 +24,7 @@ function PrivacyPageIt() {
       <h2>2. Quali dati trattiamo</h2>
       <ul>
         <li><strong>Account</strong>: email e nome del tuo account Google (l’accesso avviene solo con Google), nome che scegli, immagine del profilo, conferma di maggiore età, codice di invito, impostazioni della verifica in due passaggi.</li>
-        <li><strong>Contenuti che scrivi o detti</strong>: conversazioni con Elayra, pagine di diario, rituali, risposte del Percorso, invito e messaggi della Forgia, documenti caricati nell’archivio dei progetti.</li>
+        <li><strong>Contenuti che scrivi o detti</strong>: conversazioni con Elayra, pagine di diario, rituali, letture dei tarocchi e report mensili, risposte del Percorso, invito e messaggi della Forgia, documenti caricati nell’archivio dei progetti.</li>
         <li><strong>Dati di utilizzo</strong>: numero di risposte di Elayra usate nel mese, punti luce, livello, stelle e costellazioni del Collettivo.</li>
         <li><strong>Pagamenti</strong>: piano scelto, stato dell’abbonamento e identificativo cliente. I dati della carta li tratta solo Stripe: noi non li vediamo.</li>
         <li><strong>Dati tecnici</strong>: indirizzo IP e registri tecnici necessari a far funzionare e proteggere il servizio.</li>
@@ -102,7 +102,7 @@ function PrivacyPageEn() {
       <h2>2. What data we process</h2>
       <ul>
         <li><strong>Account</strong>: the email and name of your Google account (sign-in is with Google only), the name you choose, profile picture, confirmation that you are an adult, invitation code, two-step verification settings.</li>
-        <li><strong>Content you write or dictate</strong>: conversations with Elayra, journal pages, rituals, answers in the Path, Forge invitation and messages, documents uploaded to the project archive.</li>
+        <li><strong>Content you write or dictate</strong>: conversations with Elayra, journal pages, rituals, tarot readings and monthly reports, answers in the Path, Forge invitation and messages, documents uploaded to the project archive.</li>
         <li><strong>Usage data</strong>: number of Elayra replies used in the month, light points, level, stars and constellations of the Collective.</li>
         <li><strong>Payments</strong>: chosen plan, subscription status and customer identifier. Card details are handled only by Stripe: we never see them.</li>
         <li><strong>Technical data</strong>: IP address and technical logs needed to run and protect the service.</li>
