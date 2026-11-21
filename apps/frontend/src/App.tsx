@@ -10,6 +10,7 @@ import { TheForge } from './pages/TheForgePage';
 import { Contatti } from './pages/Contatti';
 import { GamingPage } from './pages/GamingPage';
 import { SynchronicitiesPage } from './pages/SynchronicitiesPage';
+import { TarotPage } from './pages/TarotPage';
 import { CollectivePage } from './pages/CollectivePage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
@@ -47,6 +48,11 @@ function App() {
           <Route path="/forge" element={
             <ProtectedRoute>
               <TheForge />
+            </ProtectedRoute>
+          } />
+          <Route path="/tarot" element={
+            <ProtectedRoute>
+              <TarotPage />
             </ProtectedRoute>
           } />
           <Route path="/synchronicities" element={

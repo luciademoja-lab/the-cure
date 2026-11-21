@@ -78,6 +78,9 @@ let adminCalls: { path: string; method: string; body: unknown }[] = [];
 let myMatches: Row[] = [];
 let adminMatches: Row[] = [];
 let forgeMessages: Row[] = [];
+let tarotRows: Row[] = [];
+let reportRows: Row[] = [];
+let purchaseRows: Row[] = [];
 
 const fetchMock = vi.fn(async (input: any, init: any = {}) => {
   const url = new URL(String(input));
@@ -129,7 +132,8 @@ const fetchMock = vi.fn(async (input: any, init: any = {}) => {
       rituals.push(row);
       return json([row], { status: 201 });
     }
-    const day = (url.searchParams.get('day') || '').replace('eq.', '');
+    const dayParam = url.searchParams.get('day') || '';
+    const day = dayParam.startsWith('eq.') ? dayParam.slice(3) : '';
     const kind = (url.searchParams.get('kind') || '').replace('eq.', '');
     return json(rituals.filter((r) => (!day || r.day === day) && (!kind || r.kind === kind)));
   }
@@ -157,12 +161,43 @@ const fetchMock = vi.fn(async (input: any, init: any = {}) => {
     adminCalls.push({ path: url.pathname + url.search, method, body: init.body ? JSON.parse(init.body) : null });
     if (url.pathname === '/rest/v1/forge_matches') return json(adminMatches);
     if (url.pathname === '/rest/v1/subscriptions') return json([]);
+    if (url.pathname === '/rest/v1/tarot_readings' && method === 'POST') {
+      const row = { id: uuid(), created_at: new Date().toISOString(), ...JSON.parse(init.body) };
+      tarotRows.push(row);
+      return json([row], { status: 201 });
+    }
+    if (url.pathname === '/rest/v1/tarot_readings' && method === 'PATCH') {
+      tarotRows = tarotRows.map((r) => ({ ...r, ...JSON.parse(init.body) }));
+      return json(tarotRows);
+    }
+    if (url.pathname === '/rest/v1/monthly_reports' && method === 'POST') {
+      const row = { created_at: new Date().toISOString(), ...JSON.parse(init.body) };
+      reportRows.push(row);
+      return json([row], { status: 201 });
+    }
+    if (url.pathname === '/rest/v1/report_purchases' && method === 'POST') {
+      purchaseRows.push(JSON.parse(init.body));
+      return json(null, { status: 201 });
+    }
     if (url.pathname === '/rest/v1/forge_messages' && method === 'POST') {
       const row = { id: uuid(), created_at: new Date().toISOString(), ...JSON.parse(init.body) };
       forgeMessages.push(row);
       return json([row], { status: 201 });
     }
     return json([], { status: 201 });
+  }
+  if (url.pathname === '/rest/v1/tarot_readings') {
+    const dayParam = url.searchParams.get('day') || '';
+    const day = dayParam.startsWith('eq.') ? dayParam.slice(3) : '';
+    return json(tarotRows.filter((r) => !day || r.day === day));
+  }
+  if (url.pathname === '/rest/v1/monthly_reports') {
+    const month = (url.searchParams.get('month') || '').startsWith('eq.') ? url.searchParams.get('month')!.slice(3) : '';
+    return json(reportRows.filter((r) => !month || r.month === month));
+  }
+  if (url.pathname === '/rest/v1/report_purchases') {
+    const month = (url.searchParams.get('month') || '').startsWith('eq.') ? url.searchParams.get('month')!.slice(3) : '';
+    return json(purchaseRows.filter((r) => !month || r.month === month));
   }
   if (url.pathname === '/rest/v1/ai_usage') {
     if (method === 'POST') {
@@ -213,6 +248,9 @@ beforeEach(() => {
   myMatches = [];
   adminMatches = [];
   forgeMessages = [];
+  tarotRows = [];
+  reportRows = [];
+  purchaseRows = [];
   forgeAnswer = { has_project: false };
   streamCalls.length = 0;
   createCalls.length = 0;
@@ -599,5 +637,80 @@ describe('cosa Elayra sa', () => {
     expect((await request(app).post('/api/profile').set(authed).send({ elayraNotes: '' })).status).toBe(204);
     expect(profilePatches[1].body).toEqual({ elayra_notes: null });
     expect((await request(app).post('/api/profile').set(authed).send({ elayraNotes: 'x'.repeat(6001) })).status).toBe(413);
+  });
+});
+
+describe('tarocchi e report mensile', () => {
+  const today = new Date().toISOString().slice(0, 10);
+  const month = today.slice(0, 7);
+  const doBoth = async () => {
+    await request(app).post('/api/rituals').set(authed).send({ kind: 'morning', day: today, response: 'luce' });
+    await request(app).post('/api/rituals').set(authed).send({ kind: 'evening', day: today, response: 'grazie' });
+  };
+
+  it('la lettura si apre solo dopo entrambe le pratiche', async () => {
+    await request(app).post('/api/rituals').set(authed).send({ kind: 'morning', day: today, response: 'luce' });
+    const state = await request(app).get(`/api/tarot?day=${today}`).set(authed);
+    expect(state.body.eligible).toBe(false);
+    expect((await request(app).post('/api/tarot/reading').set(authed).send({ day: today })).status).toBe(403);
+  });
+
+  it('estrae tre carte diverse, scrive la lettura in streaming e la salva', async () => {
+    await doBoth();
+    const res = await request(app).post('/api/tarot/reading').set(authed).send({ day: today });
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('event: cards');
+    expect(res.text).toContain('event: delta');
+    expect(res.text).toContain('event: done');
+    expect(tarotRows).toHaveLength(1);
+    const ids = tarotRows[0].cards.map((c: Row) => c.id);
+    expect(new Set(ids).size).toBe(3);
+    expect(tarotRows[0].reading).toBe('Sono qui.');
+    expect(streamCalls[streamCalls.length - 1].system[0].text).toContain('non previsioni');
+
+    // Una seconda richiesta rimostra la stessa lettura senza estrarre altre carte.
+    const again = await request(app).post('/api/tarot/reading').set(authed).send({ day: today });
+    expect(again.text).toContain('event: done');
+    expect(tarotRows).toHaveLength(1);
+    const state = await request(app).get(`/api/tarot?day=${today}`).set(authed);
+    expect(state.body.reading.cards).toHaveLength(3);
+  });
+
+  it('la spunta per non ricevere le letture si salva nel profilo', async () => {
+    const res = await request(app).post('/api/tarot/settings').set(authed).send({ optOut: true });
+    expect(res.status).toBe(200);
+    expect(profilePatches[profilePatches.length - 1].body).toEqual({ tarot_opt_out: true });
+  });
+
+  it('con il piano gratuito il report si paga, con un piano a pagamento è incluso', async () => {
+    await doBoth();
+    const locked = await request(app).post('/api/reports/generate').set(authed).send({ month });
+    expect(locked.status).toBe(402);
+    const list = await request(app).get('/api/reports').set(authed);
+    expect(list.body.included).toBe(false);
+    expect(list.body.priceCents).toBe(99);
+    expect(list.body.months[0]).toMatchObject({ month, unlocked: false });
+
+    currentPlan = 'part';
+    const ok = await request(app).post('/api/reports/generate').set(authed).send({ month });
+    expect(ok.status).toBe(200);
+    expect(ok.text).toContain('event: done');
+    expect(reportRows).toHaveLength(1);
+    expect(reportRows[0].month).toBe(`${month}-01`);
+    const prompt = streamCalls[streamCalls.length - 1].messages[0].content;
+    expect(prompt).toContain('mattino: luce');
+  });
+
+  it('un report comprato si sblocca per quel mese', async () => {
+    await doBoth();
+    purchaseRows.push({ user_id: 'user-1', month: `${month}-01`, stripe_session_id: 'cs_1' });
+    const ok = await request(app).post('/api/reports/generate').set(authed).send({ month });
+    expect(ok.status).toBe(200);
+    expect((await request(app).post('/api/reports/checkout').set(authed).send({ month })).status).toBe(409);
+  });
+
+  it('rifiuta mesi futuri o malformati', async () => {
+    expect((await request(app).post('/api/reports/generate').set(authed).send({ month: '2999-01' })).status).toBe(400);
+    expect((await request(app).post('/api/reports/generate').set(authed).send({ month: 'novembre' })).status).toBe(400);
   });
 });

@@ -3,10 +3,11 @@ import cors from 'cors';
 import { config } from './config';
 import { aiService, ChatTurn } from './services/ai.service';
 import { adminDb, AuthedUser, db, dbErrorText, getUserFromToken, HttpError } from './services/supabase';
-import { activeSubscription, createCheckout, createPortal, handleWebhook } from './services/billing';
+import { activeSubscription, createCheckout, createPortal, createReportCheckout, handleWebhook, REPORT_PRICE_CENTS } from './services/billing';
 import { isPlanId, PLANS, PlanId, startOfMonthUtc } from './plans';
 import { buildProgress, LEVELS, RITUAL_LIGHT_POINTS } from './levels';
-import { localeMiddleware, translateError } from './locale';
+import { currentLocale, localeMiddleware, translateError } from './locale';
+import { cardsForPrompt, describeCards, drawSpread, nextMonth, parseMonth, recentMonths } from './tarot';
 import { forgeInvitation, FORGE_AREAS, sanitizeDraft, shouldCheckForge } from './forge';
 
 type AuthedRequest = Request & { user: AuthedUser };
@@ -870,6 +871,285 @@ export function createApp() {
         if (detail.includes('already claimed')) throw new HttpError(409, 'Questa costellazione l’hai già reclamata');
         if (detail.includes('unknown constellation')) throw new HttpError(400, 'Costellazione non valida');
         throw e;
+      }
+    })
+  );
+
+  // ── Tarocchi: una lettura in regalo per chi completa le due pratiche del giorno ─
+
+  /** Apre una risposta in streaming (Server-Sent Events) e la chiude se il browser se ne va. */
+  const openStream = (res: Response) => {
+    res.status(200);
+    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders?.();
+    const abort = new AbortController();
+    res.on('close', () => {
+      if (!res.writableEnded) abort.abort();
+    });
+    const send = (event: string, payload: unknown) => res.write(`event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`);
+    return { send, signal: abort.signal, aborted: () => abort.signal.aborted };
+  };
+
+  type TarotRow = { id: string; day: string; cards: unknown; reading: string; created_at: string };
+  const tarotView = (r: TarotRow) => ({ day: r.day, cards: describeCards(r.cards), reading: r.reading, createdAt: r.created_at });
+
+  const tarotOptOut = async (user: AuthedUser) => {
+    const { data } = await db<{ tarot_opt_out: boolean | null }[]>(user, 'profiles?select=tarot_opt_out');
+    return Boolean(data?.[0]?.tarot_opt_out);
+  };
+
+  const ritualsOfDay = async (user: AuthedUser, day: string) => {
+    const { data } = await db<RitualRow[]>(user, `rituals?select=kind,day,response,light_points&day=eq.${day}`);
+    const find = (kind: string) => (data || []).find((r) => r.kind === kind) || null;
+    return { morning: find('morning'), evening: find('evening') };
+  };
+
+  app.get(
+    '/api/tarot',
+    requireAuth,
+    route(async (req, res) => {
+      const day = parseDay(req.query.day);
+      const [optOut, rituals, readings] = await Promise.all([
+        tarotOptOut(req.user),
+        ritualsOfDay(req.user, day),
+        db<TarotRow[]>(req.user, `tarot_readings?select=id,day,cards,reading,created_at&day=eq.${day}`),
+      ]);
+      const row = readings.data?.[0];
+      res.json({
+        day,
+        optOut,
+        eligible: Boolean(rituals.morning && rituals.evening),
+        reading: row && row.reading ? tarotView(row) : null,
+      });
+    })
+  );
+
+  app.get(
+    '/api/tarot/readings',
+    requireAuth,
+    route(async (req, res) => {
+      const { data } = await db<TarotRow[]>(
+        req.user,
+        "tarot_readings?select=id,day,cards,reading,created_at&reading=neq.&order=day.desc&limit=60"
+      );
+      res.json({ readings: (data || []).map(tarotView), optOut: await tarotOptOut(req.user) });
+    })
+  );
+
+  app.post(
+    '/api/tarot/settings',
+    requireAuth,
+    route(async (req, res) => {
+      if (typeof req.body?.optOut !== 'boolean') throw new HttpError(400, 'Azione non valida');
+      await db(req.user, `profiles?id=eq.${req.user.id}`, { method: 'PATCH', body: { tarot_opt_out: req.body.optOut } });
+      res.json({ optOut: req.body.optOut });
+    })
+  );
+
+  app.post(
+    '/api/tarot/reading',
+    requireAuth,
+    route(async (req, res) => {
+      const day = parseDay(req.body?.day);
+      const rituals = await ritualsOfDay(req.user, day);
+      if (!rituals.morning || !rituals.evening) {
+        throw new HttpError(403, 'La lettura si apre quando completi entrambe le pratiche del giorno');
+      }
+      const { data: existing } = await db<TarotRow[]>(
+        req.user,
+        `tarot_readings?select=id,day,cards,reading,created_at&day=eq.${day}`
+      );
+      let row = existing?.[0];
+      const stream = openStream(res);
+
+      // Già letta: la si rimostra così com'è.
+      if (row && row.reading) {
+        const view = tarotView(row);
+        stream.send('cards', { cards: view.cards });
+        stream.send('done', view);
+        return res.end();
+      }
+
+      try {
+        // Le carte si estraggono una volta sola e restano quelle, anche se la lettura va ripetuta.
+        if (!row) {
+          const { data: inserted } = await adminDb<TarotRow[]>('tarot_readings?on_conflict=user_id,day', {
+            method: 'POST',
+            body: { user_id: req.user.id, day, cards: drawSpread(), reading: '', locale: currentLocale() },
+            prefer: 'return=representation,resolution=merge-duplicates',
+          });
+          row = inserted[0];
+        }
+        const cards = describeCards(row.cards);
+        stream.send('cards', { cards });
+
+        const account = await loadAccount(req.user);
+        const reading = await aiService.streamTarotReading({
+          cards: cardsForPrompt(cards),
+          nickname: account.nickname,
+          morning: rituals.morning.response,
+          evening: rituals.evening.response,
+          onDelta: (text) => stream.send('delta', { text }),
+          signal: stream.signal,
+          model: account.plan.tier === 'full' ? config.model : config.lightModel,
+        });
+        const { data: saved } = await adminDb<TarotRow[]>(`tarot_readings?id=eq.${row.id}`, {
+          method: 'PATCH',
+          body: { reading },
+          prefer: 'return=representation',
+        });
+        stream.send('done', tarotView(saved?.[0] || { ...row, reading }));
+      } catch (e) {
+        if (!stream.aborted()) {
+          console.error('Tarot error:', e instanceof Error ? e.message : e);
+          stream.send('error', {
+            message: translateError(e instanceof HttpError ? e.message : 'In questo momento non riesco a risponderti. Riprova tra poco.'),
+          });
+        }
+      } finally {
+        res.end();
+      }
+    })
+  );
+
+  // ── Report mensile di Elayra ───────────────────────────────────────────
+
+  type ReportRow = { month: string; content: string; created_at: string };
+
+  /** Il report è incluso nei piani a pagamento; con il piano gratuito si compra mese per mese. */
+  const reportAccess = async (user: AuthedUser, monthStart: string) => {
+    const account = await loadAccount(user);
+    if (account.plan.id !== 'free') return { allowed: true, included: true, account };
+    const { data } = await db<{ id: string }[]>(user, `report_purchases?select=id&month=eq.${monthStart}&limit=1`);
+    return { allowed: Boolean(data?.length), included: false, account };
+  };
+
+  app.get(
+    '/api/reports',
+    requireAuth,
+    route(async (req, res) => {
+      const months = recentMonths(6);
+      const since = `${months[months.length - 1]}-01`;
+      const [account, reports, purchases] = await Promise.all([
+        loadAccount(req.user),
+        db<ReportRow[]>(req.user, `monthly_reports?select=month,content,created_at&month=gte.${since}&order=month.desc`),
+        db<{ month: string }[]>(req.user, `report_purchases?select=month&month=gte.${since}`),
+      ]);
+      const included = account.plan.id !== 'free';
+      const paid = new Set((purchases.data || []).map((p) => p.month.slice(0, 7)));
+      const byMonth = new Map((reports.data || []).map((r) => [r.month.slice(0, 7), r]));
+      res.json({
+        included,
+        priceCents: REPORT_PRICE_CENTS,
+        months: months.map((m) => {
+          const r = byMonth.get(m);
+          return {
+            month: m,
+            unlocked: included || paid.has(m),
+            report: r ? { content: r.content, createdAt: r.created_at } : null,
+          };
+        }),
+      });
+    })
+  );
+
+  app.post(
+    '/api/reports/checkout',
+    requireAuth,
+    route(async (req, res) => {
+      const monthStart = parseMonth(req.body?.month);
+      if (!monthStart) throw new HttpError(400, 'Data non valida');
+      const access = await reportAccess(req.user, monthStart);
+      if (access.allowed) throw new HttpError(409, 'Questo report è già tuo');
+      res.json({ url: await createReportCheckout({ userId: req.user.id, email: req.user.email, month: monthStart }) });
+    })
+  );
+
+  app.post(
+    '/api/reports/generate',
+    requireAuth,
+    route(async (req, res) => {
+      const monthStart = parseMonth(req.body?.month);
+      if (!monthStart) throw new HttpError(400, 'Data non valida');
+      const { data: existing } = await db<ReportRow[]>(
+        req.user,
+        `monthly_reports?select=month,content,created_at&month=eq.${monthStart}`
+      );
+      if (existing?.[0]) {
+        const stream = openStream(res);
+        stream.send('done', { content: existing[0].content, createdAt: existing[0].created_at });
+        return res.end();
+      }
+      const access = await reportAccess(req.user, monthStart);
+      if (!access.allowed) throw new HttpError(402, 'Il report di questo mese si sblocca con 0,99 € o con un piano a pagamento');
+
+      const end = nextMonth(monthStart);
+      const [entries, rituals, readings] = await Promise.all([
+        db<{ mood: number; energy: string; sensation: string | null; content: string; created_at: string }[]>(
+          req.user,
+          `journal_entries?select=mood,energy,sensation,content,created_at&created_at=gte.${monthStart}&created_at=lt.${end}&order=created_at.asc&limit=200`
+        ),
+        db<RitualRow[]>(req.user, `rituals?select=kind,day,response,light_points&day=gte.${monthStart}&day=lt.${end}&order=day.asc&limit=200`),
+        db<TarotRow[]>(
+          req.user,
+          `tarot_readings?select=id,day,cards,reading,created_at&day=gte.${monthStart}&day=lt.${end}&reading=neq.&order=day.asc&limit=62`
+        ),
+      ]);
+      const clip = (text: string, n: number) => (text.length > n ? `${text.slice(0, n)}…` : text);
+      const entriesText = (entries.data || [])
+        .map((e) => `[${e.created_at.slice(0, 10)}] umore ${e.mood}/10, energia ${e.energy}${e.sensation ? `, corpo: ${e.sensation}` : ''}: ${clip(e.content, 700)}`)
+        .join('\n')
+        .slice(0, 30000);
+      const ritualsText = (rituals.data || [])
+        .map((r) => `[${r.day}] ${r.kind === 'morning' ? 'mattino' : 'sera'}: ${clip(r.response, 400)}`)
+        .join('\n')
+        .slice(0, 12000);
+      const readingsText = (readings.data || [])
+        .map((r) => {
+          const cards = describeCards(r.cards)
+            .map((c) => `${c.name.it}${c.reversed ? ' (capovolta)' : ''}`)
+            .join(', ');
+          return `[${r.day}] carte: ${cards}. Lettura: ${clip(r.reading, 900)}`;
+        })
+        .join('\n')
+        .slice(0, 20000);
+      if (!entriesText && !ritualsText && !readingsText) {
+        throw new HttpError(404, 'In questo mese non c’è ancora niente da raccontare: scrivi nel diario o fai le pratiche, poi torna qui');
+      }
+
+      const monthLabel = new Date(`${monthStart}T12:00:00Z`).toLocaleDateString(currentLocale() === 'en' ? 'en-GB' : 'it-IT', {
+        month: 'long',
+        year: 'numeric',
+        timeZone: 'UTC',
+      });
+      const stream = openStream(res);
+      try {
+        const content = await aiService.streamMonthlyReport({
+          monthLabel,
+          nickname: access.account.nickname,
+          entries: entriesText,
+          rituals: ritualsText,
+          readings: readingsText,
+          onDelta: (text) => stream.send('delta', { text }),
+          signal: stream.signal,
+        });
+        const { data: saved } = await adminDb<ReportRow[]>('monthly_reports?on_conflict=user_id,month', {
+          method: 'POST',
+          body: { user_id: req.user.id, month: monthStart, content, locale: currentLocale() },
+          prefer: 'return=representation,resolution=merge-duplicates',
+        });
+        stream.send('done', { content, createdAt: saved?.[0]?.created_at || new Date().toISOString() });
+      } catch (e) {
+        if (!stream.aborted()) {
+          console.error('Report error:', e instanceof Error ? e.message : e);
+          stream.send('error', {
+            message: translateError(e instanceof HttpError ? e.message : 'In questo momento non riesco a risponderti. Riprova tra poco.'),
+          });
+        }
+      } finally {
+        res.end();
       }
     })
   );

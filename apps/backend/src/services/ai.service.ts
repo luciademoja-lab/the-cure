@@ -286,4 +286,103 @@ export const aiService = {
     });
     return textOf(message);
   },
+  /**
+   * Lettura dei tarocchi in streaming: Elayra fa da narratrice delle tre carte,
+   * le collega a ciò che la persona ha scritto nelle pratiche di oggi.
+   */
+  async streamTarotReading(opts: {
+    cards: string;
+    nickname?: string | null;
+    morning?: string;
+    evening?: string;
+    onDelta: (text: string) => void;
+    signal?: AbortSignal;
+    model?: string;
+  }): Promise<string> {
+    const stream = anthropic().messages.stream(
+      {
+        model: opts.model || config.model,
+        max_tokens: 900,
+        system: [
+          {
+            type: 'text',
+            text:
+              'Sei Elayra e stai facendo da narratrice a una lettura dei tarocchi, un dono per chi oggi ha completato le due pratiche della Luce del giorno. ' +
+              'Le carte sono specchi e immagini su cui riflettere, non previsioni: non annunciare eventi futuri e non dire mai che qualcosa accadrà di sicuro. ' +
+              'Non parlare di salute, malattie, morte di persone, gravidanze, soldi, investimenti o decisioni legali: se una carta sembra toccarli, resta sul piano interiore. ' +
+              'La Morte e la Torre parlano di trasformazione, mai di pericolo. ' +
+              `Scrivi ${lang()}, in testo semplice, senza markdown, con frasi brevi e un tono caldo, misterioso ma chiaro. ` +
+              'Struttura: una frase di apertura che accoglie la persona; poi un paragrafo per ogni carta, che inizia con il nome della carta e la sua posizione seguiti da due punti; ' +
+              'collega ogni carta, quando ha senso, a parole che la persona ha scritto oggi, senza citarle per intero; ' +
+              "chiudi con una sola domanda da portare con sé fino a domani. In tutto tra 180 e 260 parole. Non firmarti.",
+            cache_control: { type: 'ephemeral' },
+          },
+        ],
+        messages: [
+          {
+            role: 'user',
+            content:
+              `${opts.nickname ? `Nome: ${opts.nickname}\n` : ''}` +
+              `Le carte uscite:\n${opts.cards}\n\n` +
+              `Pratica del mattino, parole della persona: ${(opts.morning || '(niente)').slice(0, 1500)}\n` +
+              `Pratica della sera, parole della persona: ${(opts.evening || '(niente)').slice(0, 1500)}`,
+          },
+        ],
+      },
+      { signal: opts.signal }
+    );
+    stream.on('text', (delta) => opts.onDelta(delta));
+    return textOf(await stream.finalMessage());
+  },
+
+  /**
+   * Il report mensile: Elayra rilegge diario, pratiche e letture del mese e racconta l'andamento,
+   * confrontando con onestà ciò che dicevano le carte con ciò che la persona ha vissuto.
+   */
+  async streamMonthlyReport(opts: {
+    monthLabel: string;
+    nickname?: string | null;
+    entries: string;
+    rituals: string;
+    readings: string;
+    onDelta: (text: string) => void;
+    signal?: AbortSignal;
+  }): Promise<string> {
+    const stream = anthropic().messages.stream(
+      {
+        model: config.model,
+        max_tokens: 2200,
+        system: [
+          {
+            type: 'text',
+            text:
+              'Sei Elayra. Scrivi il report mensile di una persona che usa la tua app: lo rilegge lei, per vedere il cammino del mese. ' +
+              'Usa solo ciò che c’è nei dati: pagine di diario (con umore da 1 a 10 ed energia), pratiche del mattino e della sera, letture dei tarocchi. ' +
+              'Non inventare eventi, persone o numeri. Se i dati sono pochi, dillo con semplicità e scrivi un report più breve. ' +
+              'Non fare diagnosi e non usare linguaggio clinico. ' +
+              'Sulle carte sii onesta: non sono previsioni. Racconta dove le immagini delle letture hanno trovato un’eco in ciò che la persona ha scritto e dove no, ' +
+              'senza sostenere che le carte avessero previsto qualcosa. ' +
+              `Scrivi ${lang()}, in testo semplice, con queste sezioni nell'ordine, ognuna con il titolo in maiuscolo su una riga da sola: ` +
+              'IL MESE IN BREVE, COME TI SEI SENTITA O SENTITO (andamento di umore ed energia, con i numeri che ci sono), CIÒ CHE RITORNA (temi e parole ricorrenti), ' +
+              'LE CARTE E IL CAMMINO (il confronto), CIÒ CHE È CRESCIUTO, UN PASSO PER IL MESE CHE VIENE (uno solo, concreto e gentile). ' +
+              'Rivolgiti alla persona con il tu. Tono caldo e chiaro, frasi brevi. Non firmarti.',
+            cache_control: { type: 'ephemeral' },
+          },
+        ],
+        messages: [
+          {
+            role: 'user',
+            content:
+              `Mese: ${opts.monthLabel}\n${opts.nickname ? `Nome: ${opts.nickname}\n` : ''}\n` +
+              `PAGINE DI DIARIO:\n${opts.entries || '(nessuna)'}\n\n` +
+              `PRATICHE DELLA LUCE DEL GIORNO:\n${opts.rituals || '(nessuna)'}\n\n` +
+              `LETTURE DEI TAROCCHI:\n${opts.readings || '(nessuna)'}`,
+          },
+        ],
+      },
+      { signal: opts.signal }
+    );
+    stream.on('text', (delta) => opts.onDelta(delta));
+    return textOf(await stream.finalMessage());
+  },
 };

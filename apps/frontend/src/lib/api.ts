@@ -137,3 +137,47 @@ export async function streamChat(
   if (!finished) throw new ApiError(0, msg('interrupted'));
   return full;
 }
+
+/**
+ * Risposta in streaming generica (Server-Sent Events): chiama `on[evento]` per ogni evento.
+ * L'evento "error" diventa un'eccezione.
+ */
+export async function streamEvents(
+  path: string,
+  body: unknown,
+  on: Record<string, (payload: any) => void>,
+  signal?: AbortSignal
+): Promise<void> {
+  const res = await request(path, { method: 'POST', body: JSON.stringify(body), signal });
+  if (!res.body) throw new ApiError(0, msg('empty'));
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let finished = false;
+  const handle = (block: string) => {
+    let event = 'message';
+    let data = '';
+    for (const line of block.split('\n')) {
+      if (line.startsWith('event:')) event = line.slice(6).trim();
+      else if (line.startsWith('data:')) data += line.slice(5).trim();
+    }
+    if (!data) return;
+    const payload = JSON.parse(data);
+    if (event === 'error') throw new ApiError(502, payload.message || msg('elayraDown'));
+    if (event === 'done') finished = true;
+    on[event]?.(payload);
+  };
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let idx: number;
+    while ((idx = buffer.indexOf('\n\n')) !== -1) {
+      const block = buffer.slice(0, idx);
+      buffer = buffer.slice(idx + 2);
+      handle(block);
+    }
+  }
+  if (buffer.trim()) handle(buffer);
+  if (!finished) throw new ApiError(0, msg('interrupted'));
+}
