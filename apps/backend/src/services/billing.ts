@@ -3,6 +3,12 @@ import { config } from '../config';
 import { DUO_COUPON_ID, DUO_PERCENT_OFF, isPlanId, PLANS, PlanId } from '../plans';
 import { adminDb, HttpError } from './supabase';
 
+/**
+ * Codice fiscale Stripe per i servizi digitali (servizi forniti per via elettronica).
+ * Serve quando sull'account è attivo Managed Payments: senza, Stripe rifiuta il pagamento.
+ */
+const DIGITAL_TAX_CODE = 'txcd_10000000';
+
 let client: Stripe | null = null;
 export function stripe(): Stripe {
   if (!config.stripeSecretKey) throw new HttpError(503, 'I pagamenti non sono ancora attivi: manca STRIPE_SECRET_KEY sul server');
@@ -20,7 +26,11 @@ export async function priceIdFor(plan: PlanId): Promise<string> {
   if (!key) throw new HttpError(400, 'Questo piano non si acquista');
   const prices = await stripe().prices.list({ lookup_keys: [key], active: true, limit: 1 });
   if (prices.data[0]) return prices.data[0].id;
-  const product = await stripe().products.create({ name: `Elayra — ${def.name}`, metadata: { elayra_plan: plan } });
+  const product = await stripe().products.create({
+    name: `Elayra — ${def.name}`,
+    tax_code: DIGITAL_TAX_CODE,
+    metadata: { elayra_plan: plan },
+  });
   const price = await stripe().prices.create(
     {
       product: product.id,
@@ -114,7 +124,7 @@ export async function createReportCheckout(opts: { userId: string; email?: strin
         price_data: {
           currency: 'eur',
           unit_amount: REPORT_PRICE_CENTS,
-          product_data: { name: `Elayra — Report ${opts.month.slice(0, 7)}` },
+          product_data: { name: `Elayra — Report ${opts.month.slice(0, 7)}`, tax_code: DIGITAL_TAX_CODE },
         },
       },
     ],
