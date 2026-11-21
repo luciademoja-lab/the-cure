@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { NavLink } from '../atoms/NavLink';
+import { SacredSymbol } from '../atoms/SacredSymbol';
 import { useTranslation } from '../../i18n/I18nProvider';
 import { useAuth } from '../../contexts/AuthContext';
 import { LanguageSelector } from '../molecules/LanguageSelector';
@@ -88,7 +89,7 @@ export function Navbar() {
       <div className="navbar-container">
         <div className="navbar-brand">
           <a href="/" className="brand-link">
-            <span className="brand-symbol">✦</span>
+            <SacredSymbol kind="all" size={26} className="brand-symbol" />
             <span className="brand-name">{t('nav.home')}</span>
           </a>
         </div>

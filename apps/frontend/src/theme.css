@@ -2384,3 +2384,15 @@ html.is-home body {
   line-height: 1.5;
   color: var(--text-muted, rgba(233, 223, 205, 0.6));
 }
+
+/* Il segno di Elayra accanto a "The Cure" */
+.navbar-brand .brand-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.navbar-brand .brand-symbol {
+  flex: none;
+  font-size: inherit;
+  filter: drop-shadow(0 0 6px rgba(217, 180, 95, 0.45));
+}

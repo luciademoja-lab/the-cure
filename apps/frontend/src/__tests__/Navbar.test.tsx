@@ -57,7 +57,7 @@ describe('Navbar', () => {
 
   it('marks the home link as active on landing page', () => {
     renderWithProviders(<Navbar />);
-    const brandLink = screen.getByRole('link', { name: '✦The Cure' });
+    const brandLink = screen.getByRole('link', { name: 'The Cure' });
     expect(brandLink).toBeInTheDocument();
   });
 });
