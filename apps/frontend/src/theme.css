@@ -2791,3 +2791,40 @@ html.is-home body {
 .tarot-card-glyph--thin {
   stroke-width: 1.4;
 }
+
+/* La lettura nasce dalla luce della stella: niente stacco, la luce si dissolve e le carte affiorano. */
+.tarot-modal-backdrop {
+  animation-duration: 1s;
+}
+.tarot-modal-backdrop.from-star {
+  animation: none;
+}
+.tarot-modal-backdrop.from-star::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 45%, rgba(255, 250, 235, 1) 0%, rgba(255, 236, 180, 0.85) 18%, rgba(207, 165, 74, 0.25) 45%, rgba(5, 4, 3, 0) 75%);
+  animation: tarot-light-dissolve 2.2s ease-out forwards;
+  z-index: 1;
+}
+.tarot-modal {
+  animation: tarot-modal-rise 1.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.tarot-modal-backdrop.from-star .tarot-modal {
+  animation-delay: 0.5s;
+}
+@keyframes tarot-light-dissolve {
+  0% { opacity: 1; transform: scale(1.2); }
+  100% { opacity: 0; transform: scale(0.6); }
+}
+@keyframes tarot-modal-rise {
+  0% { opacity: 0; transform: translateY(18px) scale(0.97); filter: blur(6px); }
+  100% { opacity: 1; transform: none; filter: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tarot-modal,
+  .tarot-modal-backdrop.from-star::before {
+    animation-duration: 0.3s !important;
+  }
+}

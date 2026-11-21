@@ -30,6 +30,7 @@ export function DailyLightPracticePage() {
   const [error, setError] = useState('');
   const [tarot, setTarot] = useState<{ optOut: boolean; eligible: boolean; reading: TarotReading | null } | null>(null);
   const [tarotStage, setTarotStage] = useState<'idle' | 'star' | 'reading'>('idle');
+  const [fromStar, setFromStar] = useState(false);
 
   const loadTarot = async () => {
     try {
@@ -109,7 +110,10 @@ export function DailyLightPracticePage() {
             <>
               <p>{t('tarot.todayDone')}</p>
               <div className="tarot-invite-actions">
-                <button type="button" className="cta-button secondary" onClick={() => setTarotStage('reading')}>
+                <button type="button" className="cta-button secondary" onClick={() => {
+                    setFromStar(false);
+                    setTarotStage('reading');
+                  }}>
                   {t('tarot.reread')}
                 </button>
                 <Link to="/tarot" className="auth-link">
@@ -132,12 +136,21 @@ export function DailyLightPracticePage() {
         </section>
       )}
 
-      {tarotStage === 'star' && <TarotStar onDone={() => setTarotStage('reading')} />}
+      {tarotStage === 'star' && (
+        <TarotStar
+          onDone={() => {
+            setFromStar(true);
+            setTarotStage('reading');
+          }}
+        />
+      )}
       {tarotStage === 'reading' && (
         <TarotModal
           day={localDay()}
+          fromStar={fromStar}
           onClose={(reading) => {
             setTarotStage('idle');
+            setFromStar(false);
             setTarot((prev) => (prev ? { ...prev, reading: reading || prev.reading } : prev));
           }}
           onOptOut={(optOut) => setTarot((prev) => (prev ? { ...prev, optOut } : prev))}

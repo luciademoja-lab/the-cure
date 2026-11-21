@@ -77,6 +77,7 @@ const EN: Record<string, string> = {
   'Stripe non ha restituito la pagina di pagamento': 'Stripe did not return the payment page',
   'Supabase non configurato sul server': 'Supabase is not configured on the server',
   'Testo non valido': 'Invalid text',
+  'Il pagamento non è partito. Riprova tra poco o scrivici a write@elayra.app.': 'The payment didn’t start. Please try again shortly or write to us at write@elayra.app.',
   'La lettura si apre quando completi entrambe le pratiche del giorno': 'The reading opens when you complete both practices of the day',
   'Questo report è già tuo': 'This report is already yours',
   'Il report di questo mese si sblocca con 0,99 € o con un piano a pagamento': 'This month’s report unlocks for €0.99 or with a paid plan',
