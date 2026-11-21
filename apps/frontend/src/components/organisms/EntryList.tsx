@@ -7,7 +7,7 @@ type EntryListProps = {
 };
 
 export function EntryList({ entries, onSelectEntry }: EntryListProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
 
   const getMoodEmoji = (mood: number) => {
     if (mood <= 3) return '🌧️';
@@ -18,7 +18,7 @@ export function EntryList({ entries, onSelectEntry }: EntryListProps) {
 
   const formatDate = (date: Date) => {
     const d = new Date(date);
-    const weekday = d.toLocaleDateString('en-US', { weekday: 'long' });
+    const weekday = d.toLocaleDateString(locale === 'it' ? 'it-IT' : 'en-GB', { weekday: 'long' });
     const day = String(d.getDate()).padStart(2, '0');
     const month = String(d.getMonth() + 1).padStart(2, '0');
     return `${weekday} ${day}/${month}`;

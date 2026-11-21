@@ -1,8 +1,14 @@
+import { useTranslation } from '../../i18n/I18nProvider';
 import { Link } from 'react-router-dom';
 import { LEGAL, ownerLine } from '../../lib/legal';
 import { LegalPage, Mail } from './LegalPage';
 
 export function TermsPage() {
+  const { locale } = useTranslation();
+  return locale === 'it' ? <TermsPageIt /> : <TermsPageEn />;
+}
+
+function TermsPageIt() {
   return (
     <LegalPage title="Termini di servizio">
       <p>
@@ -75,6 +81,85 @@ export function TermsPage() {
       </p>
 
       <h2>10. Contatti</h2>
+      <p>
+        <Mail />
+      </p>
+    </LegalPage>
+  );
+}
+
+function TermsPageEn() {
+  return (
+    <LegalPage title="Terms of service">
+      <p>
+        These terms govern the use of {LEGAL.brand} ({LEGAL.site}), provided by {ownerLine()}. By using the service you accept
+        them.
+      </p>
+
+      <h2>1. The service</h2>
+      <p>
+        {LEGAL.brand} is a personal reflection companion based on artificial intelligence: a conversational journal, daily
+        rituals, the Path, Synchronicities, the Collective and the Forge, the space where people with related projects can
+        meet and collaborate.
+      </p>
+
+      <h2>2. It is not a health service</h2>
+      <p>
+        Elayra is not a person, not a therapist and not a doctor, and does not provide diagnoses, treatment or professional
+        advice. Do not use her in emergencies: call your local emergency number (112 in Europe). Please also read the{' '}
+        <Link to="/disclaimer">disclaimer</Link>.
+      </p>
+
+      <h2>3. Account</h2>
+      <ul>
+        <li>You must be at least 18 years old.</li>
+        <li>Two-step verification is required; you are responsible for keeping your credentials safe.</li>
+        <li>An account is personal: do not give it to others.</li>
+      </ul>
+
+      <h2>4. Plans and payments</h2>
+      <ul>
+        <li>The free plan includes a limited number of replies per month. Paid plans (Forge, Part time, Full time, H24) are monthly subscriptions that renew automatically, at the prices shown on the Plans page.</li>
+        <li>You can cancel at any time from your Profile: the subscription stays active until the end of the period already paid.</li>
+        <li>Paying for another person in the Forge activates two subscriptions with 20% off the total; the other person’s subscription ends if you cancel your payment.</li>
+        <li>Free months earned with the constellations of the Collective cannot be exchanged for money.</li>
+        <li>
+          Right of withdrawal: by asking for the digital service to start immediately you acknowledge that, once the service
+          has begun, the 14-day withdrawal right under consumer law does not apply to the period already used. For billing
+          problems write to <Mail />.
+        </li>
+      </ul>
+
+      <h2>5. The Forge and Secretary Liria</h2>
+      <ul>
+        <li>Meetings in the Forge happen only with the consent of both people. Each person remains responsible for what they write, upload and decide to do with the other person.</li>
+        <li>Projects, ideas and documents belong to whoever creates them: {LEGAL.brand} acquires no rights over them.</li>
+        <li>Secretary Liria is a separate service, with its own terms and prices. Elayra prepares the brief, but it is sent only after your confirmation and your relationship with Liria is directly between you and her. The 5% discount applies to the Part time plan and above, while the agreement with Liria remains in place.</li>
+      </ul>
+
+      <h2>6. Acceptable use</h2>
+      <p>
+        You may not use the service for illegal activities, to harass other people, to upload content that infringes the
+        rights of others or to try to get around the system’s protections. We may suspend accounts that do so.
+      </p>
+
+      <h2>7. AI-generated content</h2>
+      <p>Elayra’s replies are generated automatically and may contain inaccuracies. You decide what to do with them.</p>
+
+      <h2>8. Liability</h2>
+      <p>
+        The service is provided with the utmost care but without a guarantee of uninterrupted availability. To the extent
+        permitted by law, we are not liable for indirect damages arising from the use of the service. The rights that the law
+        grants to consumers remain unaffected.
+      </p>
+
+      <h2>9. Changes and governing law</h2>
+      <p>
+        We may update these terms; important changes will be communicated to you before they take effect. Italian law applies;
+        for consumers, the courts of the place of residence have jurisdiction.
+      </p>
+
+      <h2>10. Contact</h2>
       <p>
         <Mail />
       </p>

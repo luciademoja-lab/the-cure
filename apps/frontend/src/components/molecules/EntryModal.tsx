@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { JournalEntry } from '../../types/journal';
+import { useTranslation } from '../../i18n/I18nProvider';
 import '../../styles/EntryModal.css';
 
 interface EntryModalProps {
@@ -8,6 +9,7 @@ interface EntryModalProps {
 }
 
 export function EntryModal({ entry, onClose }: EntryModalProps) {
+  const { t, locale } = useTranslation();
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -24,7 +26,7 @@ export function EntryModal({ entry, onClose }: EntryModalProps) {
   };
 
   const formatDate = (date: Date) => {
-    return new Date(date).toLocaleTimeString('en-US', {
+    return new Date(date).toLocaleTimeString(locale === 'it' ? 'it-IT' : 'en-GB', {
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
@@ -37,12 +39,12 @@ export function EntryModal({ entry, onClose }: EntryModalProps) {
       <div className="entry-modal" onClick={e => e.stopPropagation()}>
         <div className="entry-modal-header">
           <div className="entry-modal-meta">
-            <span className="entry-modal-mood" title={`Mood: ${entry.mood}/10`}>
+            <span className="entry-modal-mood" title={`${t('entryModal.mood')}: ${entry.mood}/10`}>
               {getMoodEmoji(entry.mood)}
             </span>
             <span className="entry-modal-date">{formatDate(entry.timestamp)}</span>
           </div>
-          <button className="entry-modal-close" onClick={onClose} aria-label="Close modal">
+          <button className="entry-modal-close" onClick={onClose} aria-label={t('common.close')}>
             &times;
           </button>
         </div>
@@ -52,9 +54,9 @@ export function EntryModal({ entry, onClose }: EntryModalProps) {
         </div>
         
         <div className="entry-modal-details">
-          {entry.energy && <p><strong>Energy:</strong> {entry.energy}</p>}
-          {entry.bodyFocus && <p><strong>Body Focus:</strong> {entry.bodyFocus}</p>}
-          {entry.promptUsed && <p><strong>Prompt Used:</strong> {entry.promptUsed}</p>}
+          {entry.energy && <p><strong>{t('entryModal.energy')}:</strong> {entry.energy}</p>}
+          {entry.bodyFocus && <p><strong>{t('entryModal.bodyFocus')}:</strong> {entry.bodyFocus}</p>}
+          {entry.promptUsed && <p><strong>{t('entryModal.prompt')}:</strong> {entry.promptUsed}</p>}
           
           {(entry.tags?.length > 0 || entry.aiTags?.length > 0) && (
             <div className="entry-modal-tags">

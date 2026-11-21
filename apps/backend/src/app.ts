@@ -6,6 +6,7 @@ import { adminDb, AuthedUser, db, dbErrorText, getUserFromToken, HttpError } fro
 import { activeSubscription, createCheckout, createPortal, handleWebhook } from './services/billing';
 import { isPlanId, PLANS, PlanId, startOfMonthUtc } from './plans';
 import { buildProgress, LEVELS, RITUAL_LIGHT_POINTS } from './levels';
+import { localeMiddleware, translateError } from './locale';
 import { forgeInvitation, FORGE_AREAS, sanitizeDraft, shouldCheckForge } from './forge';
 
 type AuthedRequest = Request & { user: AuthedUser };
@@ -98,6 +99,7 @@ export function createApp() {
       },
     })
   );
+  app.use(localeMiddleware);
   // Il webhook di Stripe deve ricevere il corpo così com'è per verificarne la firma: va prima di express.json.
   app.post('/api/stripe/webhook', express.raw({ type: 'application/json', limit: '1mb' }), (req, res, next) => {
     handleWebhook(req.body as Buffer, req.headers['stripe-signature'] as string | undefined)
@@ -433,7 +435,7 @@ export function createApp() {
         if (!abort.signal.aborted) {
           console.error('Chat error:', e instanceof Error ? e.message : e);
           const message =
-            e instanceof HttpError ? e.message : 'In questo momento non riesco a risponderti. Riprova tra poco.';
+            translateError(e instanceof HttpError ? e.message : 'In questo momento non riesco a risponderti. Riprova tra poco.');
           send('error', { message });
         }
       } finally {

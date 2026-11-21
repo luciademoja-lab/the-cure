@@ -26,7 +26,7 @@ async function toSquareWebp(file: File, side = 320): Promise<Blob> {
 }
 
 export function ProfilePage() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const { user } = useAuth();
   const { account, refresh } = useAccount();
   const [nickname, setNickname] = useState(account?.nickname || '');
@@ -114,7 +114,7 @@ export function ProfilePage() {
     ) : null;
 
   const renewal = account.subscription?.current_period_end
-    ? new Date(account.subscription.current_period_end).toLocaleDateString()
+    ? new Date(account.subscription.current_period_end).toLocaleDateString(locale === 'it' ? 'it-IT' : 'en-GB')
     : null;
 
   return (
@@ -130,7 +130,7 @@ export function ProfilePage() {
       <section className="card profile-card" aria-labelledby="profile-plan">
         <h2 id="profile-plan">{t('profile.plan')}</h2>
         <p>
-          <strong className="profile-plan-name">{plan?.name}</strong>
+          <strong className="profile-plan-name">{plan ? t(`plan.name.${plan.id}`) : null}</strong>
           {renewal && hasSubscription && <span className="profile-muted"> · {t('profile.renews', { date: renewal })}</span>}
         </p>
         <p className="profile-muted">{t('plans.usage', { used: account.usage.used, limit: account.usage.limit })}</p>

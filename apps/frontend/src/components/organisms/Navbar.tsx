@@ -116,16 +116,16 @@ export function Navbar() {
                   <span className="user-email">{displayName}</span>
                 </button>
                 <button onClick={handleLogout} className="logout-button">
-                  Logout
+                  {t('nav.logout')}
                 </button>
               </>
             ) : (
               <div className="auth-links">
                 <NavLink to="/login" isActive={location.pathname === '/login'}>
-                  Login
+                  {t('nav.login')}
                 </NavLink>
                 <NavLink to="/register" isActive={location.pathname === '/register'}>
-                  Sign Up
+                  {t('nav.signup')}
                 </NavLink>
               </div>
             )}
@@ -156,16 +156,16 @@ export function Navbar() {
                       <span className="navbar-user-sub">{t('nav.profile')}</span>
                     </button>
                     <button type="button" role="menuitem" onClick={handleLogout}>
-                      Logout
+                      {t('nav.logout')}
                     </button>
                   </>
                 ) : (
                   <>
                     <button type="button" role="menuitem" onClick={() => navigate('/login')}>
-                      Login
+                      {t('nav.login')}
                     </button>
                     <button type="button" role="menuitem" onClick={() => navigate('/register')}>
-                      Sign Up
+                      {t('nav.signup')}
                     </button>
                   </>
                 )}
