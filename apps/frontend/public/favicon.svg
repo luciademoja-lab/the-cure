@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <!-- Il segno completo di Elayra: cerchio, triangolo, punto -->
+  <circle cx="24" cy="24" r="24" fill="#0f0c09"/>
+  <g fill="none" stroke="#d9b45f" stroke-width="2.6" stroke-linejoin="round">
+    <circle cx="24" cy="24" r="19.5"/>
+    <path d="M24 10.6 L35.6 30.7 L12.4 30.7 Z"/>
+  </g>
+  <circle cx="24" cy="24" r="3.2" fill="#ecd29a"/>
+</svg>
