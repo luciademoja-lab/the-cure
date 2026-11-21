@@ -41,6 +41,8 @@ export function TheForge() {
   const [summary, setSummary] = useState('');
   const [areas, setAreas] = useState<string[]>([]);
   const [roomId, setRoomId] = useState<string | null>(null);
+  const [searchNote, setSearchNote] = useState('');
+  const [searching, setSearching] = useState(false);
 
   const apply = useCallback((next: ForgeState) => {
     setState(next);
@@ -73,6 +75,19 @@ export function TheForge() {
 
   const toggleArea = (area: string) =>
     setAreas((prev) => (prev.includes(area) ? prev.filter((a) => a !== area) : prev.length < 4 ? [...prev, area] : prev));
+
+  const search = async () => {
+    setSearching(true);
+    setSearchNote('');
+    let found = 0;
+    await run(async () => {
+      const next = await apiPost<ForgeState & { found?: number }>('/api/forge/matches/search');
+      found = next.found || 0;
+      return next;
+    });
+    setSearching(false);
+    setSearchNote(found > 0 ? t('forge.search.found', { count: found }) : t('forge.search.none'));
+  };
 
   const respond = (id: string, accept: boolean) =>
     run(() => apiPost<ForgeState>(`/api/forge/matches/${id}/respond`, { accept }));
@@ -192,9 +207,9 @@ export function TheForge() {
                 type="button"
                 className="cta-button secondary"
                 disabled={busy}
-                onClick={() => run(() => apiPost<ForgeState>('/api/forge/matches/search'))}
+                onClick={() => void search()}
               >
-                {t('forge.search')}
+                {searching ? t('forge.searching') : t('forge.search')}
               </button>
               <button
                 type="button"
@@ -205,6 +220,11 @@ export function TheForge() {
                 {t('forge.leave')}
               </button>
             </div>
+            {searchNote && (
+              <p className="forge-search-note" role="status">
+                {searchNote}
+              </p>
+            )}
           </section>
 
           <h2 className="forge-section-title">{t('forge.matchesTitle')}</h2>

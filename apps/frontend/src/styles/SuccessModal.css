@@ -1,34 +1,80 @@
-.success-modal-overlay {
+/* Avviso evanescente: affiora dalla nebbia, resta un attimo, si dissolve verso l'alto. */
+.whisper-toast {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  left: 50%;
+  bottom: 12vh;
+  z-index: 1000;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  max-width: min(88vw, 420px);
+  padding: 0.9rem 1.6rem;
+  pointer-events: none;
+  transform: translateX(-50%);
+  animation: whisper-life 3200ms ease-in-out forwards;
 }
 
-.success-modal {
-  background: white;
-  border-radius: 12px;
-  padding: 2rem;
-  text-align: center;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  max-width: 400px;
-  width: 90%;
+.whisper-glow {
+  position: absolute;
+  inset: -40% -20%;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(236, 212, 154, 0.16) 0%,
+    rgba(207, 165, 74, 0.07) 40%,
+    transparent 72%
+  );
+  filter: blur(14px);
 }
 
-.success-icon {
-  font-size: 3rem;
-  margin-bottom: 1rem;
-}
-
-.success-message {
-  font-size: 1.1rem;
-  color: #333;
+.whisper-message {
+  position: relative;
   margin: 0;
-  font-weight: 500;
+  font-family: var(--font-heading);
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--gold-light);
+  text-shadow: 0 0 18px rgba(236, 212, 154, 0.45);
+}
+
+@keyframes whisper-life {
+  0% {
+    opacity: 0;
+    filter: blur(8px);
+    transform: translate(-50%, 10px);
+  }
+  18% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translate(-50%, 0);
+  }
+  72% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    filter: blur(6px);
+    transform: translate(-50%, -14px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .whisper-toast {
+    animation-name: whisper-fade;
+  }
+
+  @keyframes whisper-fade {
+    0%,
+    100% {
+      opacity: 0;
+    }
+    15%,
+    80% {
+      opacity: 1;
+    }
+  }
 }

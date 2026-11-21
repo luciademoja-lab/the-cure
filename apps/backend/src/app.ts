@@ -669,8 +669,8 @@ export function createApp() {
     '/api/forge/matches/search',
     requireAuth,
     route(async (req, res) => {
-      await db(req.user, 'rpc/forge_find_matches', { method: 'POST', body: {} });
-      res.json(await forgeState(req.user));
+      const { data: found } = await db<number>(req.user, 'rpc/forge_find_matches', { method: 'POST', body: {} });
+      res.json({ ...(await forgeState(req.user)), found: typeof found === 'number' ? found : 0 });
     })
   );
 
