@@ -7,7 +7,18 @@ import { activeSubscription, createCheckout, createPortal, createReportCheckout,
 import { isPlanId, PLANS, PlanId, startOfMonthUtc } from './plans';
 import { buildProgress, LEVELS, RITUAL_LIGHT_POINTS } from './levels';
 import { currentLocale, localeMiddleware, translateError } from './locale';
-import { cardsForPrompt, describeCards, drawSpread, nextMonth, parseMonth, recentMonths } from './tarot';
+import { cardsForPrompt, describeCards, drawSpread } from './tarot';
+import { availablePeriods, periodEndExclusive, ReportPeriod, resolvePeriod } from './reports';
+import {
+  cleanDiscovered,
+  DiscoveryFacts,
+  discoveryContext,
+  FIRST_REPORT_DAYS,
+  isPageKey,
+  MONTH_REPORT_DAYS,
+  PAGE_KEYS,
+  visiblePages,
+} from './discovery';
 import { forgeInvitation, FORGE_AREAS, sanitizeDraft, shouldCheckForge } from './forge';
 
 type AuthedRequest = Request & { user: AuthedUser };
@@ -184,6 +195,50 @@ export function createApp() {
     db(user, 'ai_usage', { method: 'POST', body: { kind, model } }).catch((e) =>
       console.error('Usage record error:', e instanceof Error ? e.message : e)
     );
+
+  // ── Scoperta dell'app: il menu si accende pagina per pagina ─────────────
+
+  const loadDiscovery = async (user: AuthedUser): Promise<DiscoveryFacts> => {
+    const [profile, entries, tarot, days] = await Promise.all([
+      db<{ discovered_pages: string[] | null }[]>(user, 'profiles?select=discovered_pages'),
+      db(user, 'journal_entries?select=id&limit=1', { prefer: 'count=exact' }),
+      db<{ id: string }[]>(user, 'tarot_readings?select=id&reading=neq.&limit=1'),
+      db<{ day: string }[]>(user, 'rpc/my_active_days', { method: 'POST', body: {} }),
+    ]);
+    return {
+      discovered: cleanDiscovered(profile.data?.[0]?.discovered_pages),
+      journalEntries: entries.count ?? 0,
+      hasTarotReading: Boolean(tarot.data?.length),
+      activeDays: days.data?.length ?? 0,
+    };
+  };
+
+  app.get(
+    '/api/discovery',
+    requireAuth,
+    route(async (req, res) => {
+      const facts = await loadDiscovery(req.user);
+      res.json({ pages: PAGE_KEYS, visible: visiblePages(facts) });
+    })
+  );
+
+  // Visitare una pagina la fa entrare nel menu.
+  app.post(
+    '/api/discovery',
+    requireAuth,
+    route(async (req, res) => {
+      const page = req.body?.page;
+      if (!isPageKey(page)) throw new HttpError(400, 'Pagina non valida');
+      const { data } = await db<{ discovered_pages: string[] | null }[]>(req.user, 'profiles?select=discovered_pages');
+      const current = cleanDiscovered(data?.[0]?.discovered_pages);
+      if (!current.includes(page)) {
+        const next = PAGE_KEYS.filter((k) => k === page || current.includes(k));
+        await adminDb(`profiles?id=eq.${req.user.id}`, { method: 'PATCH', body: { discovered_pages: next } });
+      }
+      const facts = await loadDiscovery(req.user);
+      res.json({ pages: PAGE_KEYS, visible: visiblePages(facts) });
+    })
+  );
 
   app.get(
     '/api/me',
@@ -380,6 +435,10 @@ export function createApp() {
       const account = await loadAccount(req.user);
       requireQuota(account);
       const model = account.plan.tier === 'full' ? config.model : config.lightModel;
+      // Dove si trova la persona nella scoperta dell'app: se manca, Elayra risponde lo stesso.
+      const discovery = await loadDiscovery(req.user)
+        .then(discoveryContext)
+        .catch(() => undefined);
 
       const { data: recent } = await db<MessageRow[]>(
         req.user,
@@ -413,6 +472,7 @@ export function createApp() {
           nickname: account.nickname,
           hasHistory: history.length > 0,
           personalNotes: account.elayraNotes,
+          discovery,
           onDelta: (text) => send('delta', { text }),
           onReset: () => send('reset', {}),
           signal: abort.signal,
@@ -1022,38 +1082,64 @@ export function createApp() {
 
   // ── Report mensile di Elayra ───────────────────────────────────────────
 
-  type ReportRow = { month: string; content: string; created_at: string };
+  type ReportRow = { month: string; period: string; content: string; created_at: string };
 
-  /** Il report è incluso nei piani a pagamento; con il piano gratuito si compra mese per mese. */
-  const reportAccess = async (user: AuthedUser, monthStart: string) => {
+  /** Chiave di un report salvato: 'first30' oppure 'AAAA-MM'. */
+  const reportKey = (r: { month: string; period: string }) => (r.period === 'first30' ? 'first30' : r.month.slice(0, 7));
+
+  const reportBasics = async (user: AuthedUser) => {
+    const [days, reports] = await Promise.all([
+      db<{ day: string }[]>(user, 'rpc/my_active_days', { method: 'POST', body: {} }),
+      db<ReportRow[]>(user, 'monthly_reports?select=month,period,content,created_at&order=month.desc'),
+    ]);
+    const activeDays = (days.data || []).map((d) => String(d.day).slice(0, 10));
+    const byKey = new Map((reports.data || []).map((r) => [reportKey(r), r]));
+    const withReport = new Set([...byKey.keys()].filter((k) => k !== 'first30'));
+    return { activeDays, byKey, withReport };
+  };
+
+  /** Il report è incluso nei piani a pagamento; con il piano gratuito si compra uno per uno. */
+  const reportAccess = async (user: AuthedUser, period: ReportPeriod) => {
     const account = await loadAccount(user);
     if (account.plan.id !== 'free') return { allowed: true, included: true, account };
-    const { data } = await db<{ id: string }[]>(user, `report_purchases?select=id&month=eq.${monthStart}&limit=1`);
+    const { data } = await db<{ id: string }[]>(
+      user,
+      `report_purchases?select=id&month=eq.${period.monthStart}&period=eq.${period.kind}&limit=1`
+    );
     return { allowed: Boolean(data?.length), included: false, account };
+  };
+
+  const periodFromBody = async (user: AuthedUser, body: { period?: unknown; month?: unknown }) => {
+    const basics = await reportBasics(user);
+    const id = body?.period ?? body?.month;
+    const period = resolvePeriod(id, basics.activeDays, basics.withReport);
+    if (!period) throw new HttpError(404, 'Questo report non è ancora disponibile');
+    return { period, basics };
   };
 
   app.get(
     '/api/reports',
     requireAuth,
     route(async (req, res) => {
-      const months = recentMonths(6);
-      const since = `${months[months.length - 1]}-01`;
-      const [account, reports, purchases] = await Promise.all([
-        loadAccount(req.user),
-        db<ReportRow[]>(req.user, `monthly_reports?select=month,content,created_at&month=gte.${since}&order=month.desc`),
-        db<{ month: string }[]>(req.user, `report_purchases?select=month&month=gte.${since}`),
-      ]);
+      const [account, basics] = await Promise.all([loadAccount(req.user), reportBasics(req.user)]);
       const included = account.plan.id !== 'free';
-      const paid = new Set((purchases.data || []).map((p) => p.month.slice(0, 7)));
-      const byMonth = new Map((reports.data || []).map((r) => [r.month.slice(0, 7), r]));
+      const { data: purchases } = await db<{ month: string; period: string }[]>(req.user, 'report_purchases?select=month,period');
+      const paid = new Set((purchases || []).map((p) => reportKey(p)));
+      const periods = availablePeriods(basics.activeDays, basics.withReport);
       res.json({
         included,
         priceCents: REPORT_PRICE_CENTS,
-        months: months.map((m) => {
-          const r = byMonth.get(m);
+        activeDays: basics.activeDays.length,
+        firstNeeded: FIRST_REPORT_DAYS,
+        monthNeeded: MONTH_REPORT_DAYS,
+        periods: periods.map((p) => {
+          const r = basics.byKey.get(p.id);
           return {
-            month: m,
-            unlocked: included || paid.has(m),
+            id: p.id,
+            kind: p.kind,
+            from: p.from,
+            to: p.to,
+            unlocked: included || paid.has(p.id),
             report: r ? { content: r.content, createdAt: r.created_at } : null,
           };
         }),
@@ -1065,11 +1151,12 @@ export function createApp() {
     '/api/reports/checkout',
     requireAuth,
     route(async (req, res) => {
-      const monthStart = parseMonth(req.body?.month);
-      if (!monthStart) throw new HttpError(400, 'Data non valida');
-      const access = await reportAccess(req.user, monthStart);
+      const { period } = await periodFromBody(req.user, req.body);
+      const access = await reportAccess(req.user, period);
       if (access.allowed) throw new HttpError(409, 'Questo report è già tuo');
-      res.json({ url: await createReportCheckout({ userId: req.user.id, email: req.user.email, month: monthStart }) });
+      res.json({
+        url: await createReportCheckout({ userId: req.user.id, email: req.user.email, month: period.monthStart, period: period.kind }),
+      });
     })
   );
 
@@ -1077,30 +1164,27 @@ export function createApp() {
     '/api/reports/generate',
     requireAuth,
     route(async (req, res) => {
-      const monthStart = parseMonth(req.body?.month);
-      if (!monthStart) throw new HttpError(400, 'Data non valida');
-      const { data: existing } = await db<ReportRow[]>(
-        req.user,
-        `monthly_reports?select=month,content,created_at&month=eq.${monthStart}`
-      );
-      if (existing?.[0]) {
+      const { period, basics } = await periodFromBody(req.user, req.body);
+      const existing = basics.byKey.get(period.id);
+      if (existing) {
         const stream = openStream(res);
-        stream.send('done', { content: existing[0].content, createdAt: existing[0].created_at });
+        stream.send('done', { content: existing.content, createdAt: existing.created_at });
         return res.end();
       }
-      const access = await reportAccess(req.user, monthStart);
-      if (!access.allowed) throw new HttpError(402, 'Il report di questo mese si sblocca con 0,99 € o con un piano a pagamento');
+      const access = await reportAccess(req.user, period);
+      if (!access.allowed) throw new HttpError(402, 'Questo report si sblocca con 0,99 € o con un piano a pagamento');
 
-      const end = nextMonth(monthStart);
+      const monthStart = period.from;
+      const end = periodEndExclusive(period);
       const [entries, rituals, readings] = await Promise.all([
         db<{ mood: number; energy: string; sensation: string | null; content: string; created_at: string }[]>(
           req.user,
-          `journal_entries?select=mood,energy,sensation,content,created_at&created_at=gte.${monthStart}&created_at=lt.${end}&order=created_at.asc&limit=200`
+          `journal_entries?select=mood,energy,sensation,content,created_at&created_at=gte.${monthStart}&created_at=lt.${end}&order=created_at.asc&limit=300`
         ),
-        db<RitualRow[]>(req.user, `rituals?select=kind,day,response,light_points&day=gte.${monthStart}&day=lt.${end}&order=day.asc&limit=200`),
+        db<RitualRow[]>(req.user, `rituals?select=kind,day,response,light_points&day=gte.${monthStart}&day=lt.${end}&order=day.asc&limit=300`),
         db<TarotRow[]>(
           req.user,
-          `tarot_readings?select=id,day,cards,reading,created_at&day=gte.${monthStart}&day=lt.${end}&reading=neq.&order=day.asc&limit=62`
+          `tarot_readings?select=id,day,cards,reading,created_at&day=gte.${monthStart}&day=lt.${end}&reading=neq.&order=day.asc&limit=90`
         ),
       ]);
       const clip = (text: string, n: number) => (text.length > n ? `${text.slice(0, n)}…` : text);
@@ -1125,15 +1209,22 @@ export function createApp() {
         throw new HttpError(404, 'In questo mese non c’è ancora niente da raccontare: scrivi nel diario o fai le pratiche, poi torna qui');
       }
 
-      const monthLabel = new Date(`${monthStart}T12:00:00Z`).toLocaleDateString(currentLocale() === 'en' ? 'en-GB' : 'it-IT', {
-        month: 'long',
-        year: 'numeric',
-        timeZone: 'UTC',
-      });
+      const tagLocale = currentLocale() === 'en' ? 'en-GB' : 'it-IT';
+      const fmt = (d: string, opts: Intl.DateTimeFormatOptions) =>
+        new Date(`${d}T12:00:00Z`).toLocaleDateString(tagLocale, { ...opts, timeZone: 'UTC' });
+      const monthLabel =
+        period.kind === 'first30'
+          ? `i primi 30 giorni di uso, dal ${fmt(period.from, { day: 'numeric', month: 'long', year: 'numeric' })} al ${fmt(period.to, {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+            })}`
+          : fmt(period.from, { month: 'long', year: 'numeric' });
       const stream = openStream(res);
       try {
         const content = await aiService.streamMonthlyReport({
           monthLabel,
+          period: period.kind,
           nickname: access.account.nickname,
           entries: entriesText,
           rituals: ritualsText,
@@ -1142,9 +1233,9 @@ export function createApp() {
           onReset: () => stream.send('reset', {}),
           signal: stream.signal,
         });
-        const { data: saved } = await adminDb<ReportRow[]>('monthly_reports?on_conflict=user_id,month', {
+        const { data: saved } = await adminDb<ReportRow[]>('monthly_reports?on_conflict=user_id,period,month', {
           method: 'POST',
-          body: { user_id: req.user.id, month: monthStart, content, locale: currentLocale() },
+          body: { user_id: req.user.id, month: period.monthStart, period: period.kind, content, locale: currentLocale() },
           prefer: 'return=representation,resolution=merge-duplicates',
         });
         stream.send('done', { content, createdAt: saved?.[0]?.created_at || new Date().toISOString() });

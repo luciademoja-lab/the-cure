@@ -6,6 +6,8 @@ import { apiGet, ChatMessage, streamChat } from '../../lib/api';
 import { DictationButton } from '../atoms/DictationButton';
 import { appendDictated, useDictation } from '../../hooks/useDictation';
 import { SpeechQueue, speechSupported } from '../../lib/speech';
+import { ElayraBubbles } from '../molecules/ElayraBubbles';
+import { useDiscovery } from '../../lib/discovery';
 
 const SEND_AFTER_PAUSE_MS = 1800;
 
@@ -14,7 +16,7 @@ type EntryEditorProps = {
   onFinish: () => Promise<unknown>;
 };
 
-type Bubble = ChatMessage & { local?: boolean; kind?: 'error' | 'note' };
+type Bubble = ChatMessage & { local?: boolean; kind?: 'error' | 'note' | 'greeting'; live?: boolean };
 
 /**
  * La finestra di chat con Elayra. I messaggi passano dal backend, che li manda a Claude
@@ -22,6 +24,7 @@ type Bubble = ChatMessage & { local?: boolean; kind?: 'error' | 'note' };
  */
 export function EntryEditor({ onFinish }: EntryEditorProps) {
   const { t, locale } = useTranslation();
+  const discovered = useDiscovery();
   const [messages, setMessages] = useState<Bubble[]>([]);
   const [inputText, setInputText] = useState('');
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
@@ -101,7 +104,7 @@ export function EntryEditor({ onFinish }: EntryEditorProps) {
         setMessages(
           data.messages.length > 0
             ? data.messages
-            : [{ role: 'assistant', content: t('chat.greeting'), local: true }]
+            : [{ role: 'assistant', content: '', local: true, kind: 'greeting', live: true }]
         );
       })
       .catch((e) => {
@@ -158,7 +161,7 @@ export function EntryEditor({ onFinish }: EntryEditorProps) {
             started = true;
             setIsThinking(false);
             setIsStreaming(true);
-            setMessages((prev) => [...prev, { role: 'assistant', content: text }]);
+            setMessages((prev) => [...prev, { role: 'assistant', content: text, live: true }]);
           } else {
             setMessages((prev) => {
               const next = [...prev];
@@ -175,7 +178,7 @@ export function EntryEditor({ onFinish }: EntryEditorProps) {
           setIsThinking(true);
           setMessages((prev) => prev.slice(0, -1));
         },
-        onNote: (text) => setMessages((prev) => [...prev, { role: 'assistant', content: text }]),
+        onNote: (text) => setMessages((prev) => [...prev, { role: 'assistant', content: text, live: true }]),
       });
     } catch (e) {
       const message = e instanceof Error ? e.message : t('chat.error.generic');
@@ -218,14 +221,24 @@ export function EntryEditor({ onFinish }: EntryEditorProps) {
   return (
     <div className="entry-editor chat-editor">
       <div className="chat-window" ref={chatWindowRef} role="log" aria-live="polite" aria-label={t('chat.windowLabel')}>
-        {messages.map((message, index) => (
-          <div
-            key={message.id || `${message.role}-${index}`}
-            className={`chat-message ${message.role}${message.kind ? ` ${message.kind}` : ''}`}
-          >
-            <p>{message.content}</p>
-          </div>
-        ))}
+        {messages.map((message, index) => {
+          const key = message.id || `${message.role}-${index}`;
+          if (message.role === 'assistant' && (!message.kind || message.kind === 'greeting')) {
+            // Al primo incontro Elayra si presenta e spiega da dove partire.
+            const content =
+              message.kind === 'greeting'
+                ? discovered && discovered.length === 1
+                  ? t('chat.greetingGuide')
+                  : t('chat.greeting')
+                : message.content;
+            return <ElayraBubbles key={key} content={content} live={message.live} />;
+          }
+          return (
+            <div key={key} className={`chat-message ${message.role}${message.kind ? ` ${message.kind}` : ''}`}>
+              <p>{message.content}</p>
+            </div>
+          );
+        })}
         {(isThinking || isLoadingHistory) && (
           <div className="chat-message assistant thinking">
             <div className="typing-indicator" aria-label={t('journal.chat.thinking')}>

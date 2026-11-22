@@ -5,12 +5,16 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { EntryEditor } from '../components/organisms/EntryEditor';
 import { fakeSupabase } from '../test/setup';
 import { I18nProvider } from '../i18n/I18nProvider';
+import { MemoryRouter } from 'react-router-dom';
+import { ElayraBubbles, splitElayra } from '../components/molecules/ElayraBubbles';
 
 const renderChat = (onFinish: () => Promise<unknown> = vi.fn()) =>
   render(
-    <I18nProvider>
-      <EntryEditor onFinish={onFinish} />
-    </I18nProvider>
+    <MemoryRouter>
+      <I18nProvider>
+        <EntryEditor onFinish={onFinish} />
+      </I18nProvider>
+    </MemoryRouter>
   );
 
 const json = (body: unknown, status = 200) =>
@@ -101,5 +105,30 @@ describe('Chat con Elayra', () => {
     await user.click(finish);
     expect(onFinish).toHaveBeenCalledTimes(1);
     expect(await screen.findByText(/Saved in your journal/)).toBeInTheDocument();
+  });
+});
+
+describe('Elayra in più messaggi', () => {
+  it('divide il testo in bolle e trasforma il marcatore della pagina in un pulsante', () => {
+    const parts = splitElayra('Caspita.\n[[pausa]]\nTi va di provare?\n[[pagina:daily-light]]');
+    expect(parts).toEqual([
+      { text: 'Caspita.', pages: [] },
+      { text: 'Ti va di provare?', pages: ['daily-light'] },
+    ]);
+    expect(splitElayra('Ciao [[pa')).toEqual([{ text: 'Ciao', pages: [] }]);
+    expect(splitElayra('x\n[[pagina:admin]]')).toEqual([{ text: 'x', pages: [] }]);
+  });
+
+  it('mostra tutte le bolle di un messaggio già salvato, con il pulsante', () => {
+    render(
+      <MemoryRouter>
+        <I18nProvider>
+          <ElayraBubbles content={'Caspita.\n[[pausa]]\nProva qui.\n[[pagina:daily-light]]'} />
+        </I18nProvider>
+      </MemoryRouter>
+    );
+    expect(screen.getByText('Caspita.')).toBeInTheDocument();
+    expect(screen.getByText('Prova qui.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Go to Daily Light' })).toBeInTheDocument();
   });
 });

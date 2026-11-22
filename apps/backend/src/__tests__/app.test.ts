@@ -81,6 +81,7 @@ let forgeMessages: Row[] = [];
 let tarotRows: Row[] = [];
 let reportRows: Row[] = [];
 let purchaseRows: Row[] = [];
+let activeDayRows: string[] = [];
 
 const fetchMock = vi.fn(async (input: any, init: any = {}) => {
   const url = new URL(String(input));
@@ -197,7 +198,8 @@ const fetchMock = vi.fn(async (input: any, init: any = {}) => {
   }
   if (url.pathname === '/rest/v1/report_purchases') {
     const month = (url.searchParams.get('month') || '').startsWith('eq.') ? url.searchParams.get('month')!.slice(3) : '';
-    return json(purchaseRows.filter((r) => !month || r.month === month));
+    const period = (url.searchParams.get('period') || '').startsWith('eq.') ? url.searchParams.get('period')!.slice(3) : '';
+    return json(purchaseRows.filter((r) => (!month || r.month === month) && (!period || (r.period || 'month') === period)));
   }
   if (url.pathname === '/rest/v1/ai_usage') {
     if (method === 'POST') {
@@ -220,6 +222,7 @@ const fetchMock = vi.fn(async (input: any, init: any = {}) => {
     rpcCalls.push(fn);
     if (fn === 'effective_plan') return json(currentPlan);
     if (fn === 'forge_my_matches') return json(myMatches);
+    if (fn === 'my_active_days') return json(activeDayRows.map((day) => ({ day })));
     return json(0);
   }
   return json({}, { status: 404 });
@@ -251,6 +254,7 @@ beforeEach(() => {
   tarotRows = [];
   reportRows = [];
   purchaseRows = [];
+  activeDayRows = [];
   forgeAnswer = { has_project: false };
   streamCalls.length = 0;
   createCalls.length = 0;
@@ -682,35 +686,91 @@ describe('tarocchi e report mensile', () => {
     expect(profilePatches[profilePatches.length - 1].body).toEqual({ tarot_opt_out: true });
   });
 
-  it('con il piano gratuito il report si paga, con un piano a pagamento è incluso', async () => {
+  /** Trenta giorni di uso sparsi: uno ogni tre giorni, l'ultimo ieri. */
+  const spreadDays = (n: number) =>
+    Array.from({ length: n }, (_, i) => {
+      const d = new Date();
+      d.setUTCDate(d.getUTCDate() - 1 - (n - 1 - i) * 3);
+      return d.toISOString().slice(0, 10);
+    });
+
+  it('prima di 30 giorni di uso non c’è nessun report', async () => {
+    activeDayRows = spreadDays(12);
+    const list = await request(app).get('/api/reports').set(authed);
+    expect(list.body.periods).toEqual([]);
+    expect(list.body.activeDays).toBe(12);
+    expect(list.body.firstNeeded).toBe(30);
+    expect((await request(app).post('/api/reports/generate').set(authed).send({ period: 'first30' })).status).toBe(404);
+  });
+
+  it('dopo 30 giorni arriva il report dei primi 30: si paga col piano gratuito, è incluso negli altri', async () => {
     await doBoth();
-    const locked = await request(app).post('/api/reports/generate').set(authed).send({ month });
+    activeDayRows = spreadDays(30);
+    const locked = await request(app).post('/api/reports/generate').set(authed).send({ period: 'first30' });
     expect(locked.status).toBe(402);
     const list = await request(app).get('/api/reports').set(authed);
     expect(list.body.included).toBe(false);
     expect(list.body.priceCents).toBe(99);
-    expect(list.body.months[0]).toMatchObject({ month, unlocked: false });
+    expect(list.body.periods).toHaveLength(1);
+    expect(list.body.periods[0]).toMatchObject({ id: 'first30', unlocked: false, from: activeDayRows[0], to: activeDayRows[29] });
 
     currentPlan = 'part';
-    const ok = await request(app).post('/api/reports/generate').set(authed).send({ month });
+    const ok = await request(app).post('/api/reports/generate').set(authed).send({ period: 'first30' });
     expect(ok.status).toBe(200);
     expect(ok.text).toContain('event: done');
     expect(reportRows).toHaveLength(1);
-    expect(reportRows[0].month).toBe(`${month}-01`);
-    const prompt = streamCalls[streamCalls.length - 1].messages[0].content;
-    expect(prompt).toContain('mattino: luce');
+    expect(reportRows[0]).toMatchObject({ period: 'first30', month: `${activeDayRows[0].slice(0, 7)}-01` });
+    const call = streamCalls[streamCalls.length - 1];
+    expect(call.system[0].text).toContain('primi trenta giorni');
+    expect(call.messages[0].content).toContain('mattino: luce');
   });
 
-  it('un report comprato si sblocca per quel mese', async () => {
+  it('un report comprato si sblocca', async () => {
     await doBoth();
-    purchaseRows.push({ user_id: 'user-1', month: `${month}-01`, stripe_session_id: 'cs_1' });
-    const ok = await request(app).post('/api/reports/generate').set(authed).send({ month });
+    activeDayRows = spreadDays(30);
+    purchaseRows.push({ user_id: 'user-1', month: `${activeDayRows[0].slice(0, 7)}-01`, period: 'first30', stripe_session_id: 'cs_1' });
+    const ok = await request(app).post('/api/reports/generate').set(authed).send({ period: 'first30' });
     expect(ok.status).toBe(200);
-    expect((await request(app).post('/api/reports/checkout').set(authed).send({ month })).status).toBe(409);
+    expect((await request(app).post('/api/reports/checkout').set(authed).send({ period: 'first30' })).status).toBe(409);
   });
 
-  it('rifiuta mesi futuri o malformati', async () => {
-    expect((await request(app).post('/api/reports/generate').set(authed).send({ month: '2999-01' })).status).toBe(400);
-    expect((await request(app).post('/api/reports/generate').set(authed).send({ month: 'novembre' })).status).toBe(400);
+  it('un mese ha il suo report solo se è finito e usato quasi ogni giorno', async () => {
+    const now = new Date();
+    const prev = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+    const prevMonth = prev.toISOString().slice(0, 7);
+    const full = Array.from({ length: 26 }, (_, i) => `${prevMonth}-${String(i + 1).padStart(2, '0')}`);
+    activeDayRows = [...spreadDays(10).filter((d) => !d.startsWith(prevMonth)), ...full];
+    const list = await request(app).get('/api/reports').set(authed);
+    const ids = list.body.periods.map((p: Row) => p.id);
+    expect(ids).toContain(prevMonth);
+    expect(ids).toContain('first30');
+    expect(ids).not.toContain(now.toISOString().slice(0, 7));
+  });
+
+  it('rifiuta periodi che non esistono', async () => {
+    expect((await request(app).post('/api/reports/generate').set(authed).send({ month: '2999-01' })).status).toBe(404);
+    expect((await request(app).post('/api/reports/generate').set(authed).send({ month: 'novembre' })).status).toBe(404);
+  });
+});
+
+describe('scoperta dell’app', () => {
+  it('all’inizio si vede solo il diario; visitare una pagina la aggiunge', async () => {
+    profileRow = { ...profileRow, discovered_pages: ['journal'] };
+    const first = await request(app).get('/api/discovery').set(authed);
+    expect(first.body.visible).toEqual(['journal']);
+    expect(first.body.pages).toHaveLength(8);
+    const res = await request(app).post('/api/discovery').set(authed).send({ page: 'daily-light' });
+    expect(res.status).toBe(200);
+    expect(adminCalls.some((c: Row) => String(c.url || c.path || c).includes('profiles'))).toBe(true);
+    expect((await request(app).post('/api/discovery').set(authed).send({ page: 'admin' })).status).toBe(400);
+  });
+
+  it('Elayra sa quali pagine mancano', async () => {
+    profileRow = { ...profileRow, discovered_pages: ['journal'] };
+    await request(app).post('/api/chat').set(authed).send({ content: 'ciao' });
+    const text = streamCalls[0].system[0].text;
+    expect(text).toContain('Pagine che non ha ancora scoperto');
+    expect(text).toContain('[daily-light]');
+    expect(text).toContain('[[pausa]]');
   });
 });

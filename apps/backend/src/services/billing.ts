@@ -119,9 +119,16 @@ export async function createCheckout(opts: {
 export const REPORT_PRICE_CENTS = 99;
 
 /** Pagamento singolo (non un abbonamento) per il report di un mese. */
-export async function createReportCheckout(opts: { userId: string; email?: string; month: string }): Promise<string> {
+export async function createReportCheckout(opts: {
+  userId: string;
+  email?: string;
+  month: string;
+  period?: 'month' | 'first30';
+}): Promise<string> {
   const customer = await customerIdFor(opts.userId);
-  const metadata = { user_id: opts.userId, kind: 'report', month: opts.month };
+  const period = opts.period || 'month';
+  const metadata = { user_id: opts.userId, kind: 'report', month: opts.month, period };
+  const id = period === 'first30' ? 'first30' : opts.month.slice(0, 7);
   const session = await stripe().checkout.sessions.create({
     mode: 'payment',
     client_reference_id: opts.userId,
@@ -132,13 +139,16 @@ export async function createReportCheckout(opts: { userId: string; email?: strin
         price_data: {
           currency: 'eur',
           unit_amount: REPORT_PRICE_CENTS,
-          product_data: { name: `Elayra — Report ${opts.month.slice(0, 7)}`, tax_code: DIGITAL_TAX_CODE },
+          product_data: {
+            name: period === 'first30' ? 'Elayra — Report dei primi 30 giorni' : `Elayra — Report ${id}`,
+            tax_code: DIGITAL_TAX_CODE,
+          },
         },
       },
     ],
     metadata,
     payment_intent_data: { metadata },
-    success_url: `${config.appUrl}/tarot?report=${opts.month.slice(0, 7)}&checkout=success`,
+    success_url: `${config.appUrl}/tarot?report=${id}&checkout=success`,
     cancel_url: `${config.appUrl}/tarot?checkout=cancel`,
   });
   if (!session.url) throw new HttpError(502, 'Stripe non ha restituito la pagina di pagamento');
@@ -149,10 +159,11 @@ export async function createReportCheckout(opts: { userId: string; email?: strin
 export async function recordReportPurchase(session: Stripe.Checkout.Session): Promise<void> {
   const userId = session.metadata?.user_id;
   const month = session.metadata?.month;
+  const period = session.metadata?.period === 'first30' ? 'first30' : 'month';
   if (!userId || !month || !/^\d{4}-\d{2}-01$/.test(month) || session.payment_status !== 'paid') return;
   await adminDb('report_purchases?on_conflict=stripe_session_id', {
     method: 'POST',
-    body: { user_id: userId, month, stripe_session_id: session.id },
+    body: { user_id: userId, month, period, stripe_session_id: session.id },
     prefer: 'resolution=ignore-duplicates',
   });
 }

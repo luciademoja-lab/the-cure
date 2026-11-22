@@ -56,3 +56,19 @@ describe('thinkingFor', () => {
     expect(thinkingFor('claude-opus-4-1')).toEqual({});
   });
 });
+
+import { discoveryContext, stripMarks, visiblePages } from '../discovery';
+
+describe('scoperta', () => {
+  it('i Tarocchi si aprono da soli con la prima lettura', () => {
+    expect(visiblePages({ discovered: ['journal'], hasTarotReading: true })).toEqual(['journal', 'tarot']);
+  });
+  it('la Sincronicità è pronta solo con abbastanza pagine', () => {
+    const base = { discovered: ['journal' as const], hasTarotReading: false, activeDays: 1 };
+    expect(discoveryContext({ ...base, journalEntries: 1 })).toContain('synchronicities: NON ancora');
+    expect(discoveryContext({ ...base, journalEntries: 3 })).toContain('synchronicities: PRONTA');
+  });
+  it('toglie i marcatori dai testi', () => {
+    expect(stripMarks('Caspita.\n[[pausa]]\nCome stai?\n[[pagina:daily-light]]')).toBe('Caspita.\n\nCome stai?');
+  });
+});

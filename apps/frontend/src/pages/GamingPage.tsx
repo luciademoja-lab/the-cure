@@ -4,6 +4,18 @@ import { apiGet, apiPost } from '../lib/api';
 import { SacredSymbol, symbolForLevel } from '../components/atoms/SacredSymbol';
 import { PathGame } from '../components/path-games/PathGame';
 import { useAccount } from '../contexts/AccountContext';
+import { useAuth } from '../contexts/AuthContext';
+import { ElayraWhisper } from '../components/atoms/ElayraWhisper';
+
+/** I livelli già visti aperti: quelli nuovi si accendono con un'animazione la prima volta. */
+const seenKey = (uid: string) => `elayra:path-open:${uid}`;
+const readSeen = (uid?: string): number[] => {
+  try {
+    return uid ? JSON.parse(localStorage.getItem(seenKey(uid)) || '[]') : [];
+  } catch {
+    return [];
+  }
+};
 
 type Level = {
   level: number;
@@ -34,6 +46,18 @@ export function GamingPage() {
   const [hintOpen, setHintOpen] = useState<number | null>(null);
   const [game, setGame] = useState<number | null>(null);
   const { account } = useAccount();
+  const { user } = useAuth();
+  // I livelli aperti la volta scorsa, letti una volta sola all'apertura della pagina.
+  const [seenBefore] = useState(() => readSeen(user?.id));
+
+  useEffect(() => {
+    if (!progress || !user?.id) return;
+    try {
+      localStorage.setItem(seenKey(user.id), JSON.stringify(progress.levels.filter((l) => l.unlocked).map((l) => l.level)));
+    } catch {
+      /* niente */
+    }
+  }, [progress, user?.id]);
 
   // Si ricarica anche quando si torna su questa scheda: i punti arrivano da diario e rituali.
   useEffect(() => {
@@ -134,14 +158,30 @@ export function GamingPage() {
           </section>
 
           <ol className="path-levels">
-            {progress.levels.map((l) => (
-              <li key={l.level} className={`card path-level ${l.unlocked ? 'unlocked' : 'locked'}`}>
+            {progress.levels.map((l) => {
+              // Chiuso: un segno piccolo e sfumato, senza nome. Si sa che i passi sono sette, non cosa sono.
+              if (!l.unlocked) {
+                const isNext = progress.levels.find((x) => !x.unlocked)?.level === l.level;
+                return (
+                  <li key={l.level} className="path-level path-level--veiled" aria-label={t('path.veiled')}>
+                    <span className="path-symbol">
+                      <SacredSymbol kind={symbolForLevel(l.level)} size={22} />
+                    </span>
+                    {isNext && (
+                      <span className="path-veiled-next">{t('path.missing', { points: l.threshold - progress.lightPoints })}</span>
+                    )}
+                  </li>
+                );
+              }
+              const justOpened = l.level > 1 && !seenBefore.includes(l.level) && seenBefore.length > 0;
+              return (
+              <li key={l.level} className={`card path-level unlocked ${justOpened ? 'is-just-opened' : ''}`}>
                 <div className="path-level-header">
                   <span className="path-symbol">
                     <SacredSymbol kind={symbolForLevel(l.level)} size={30} />
                   </span>
                   <h3>
-                    {l.level}. {l.name}
+                    {justOpened ? <ElayraWhisper text={`${l.level}. ${l.name}`} delay={900} /> : `${l.level}. ${l.name}`}
                   </h3>
                   {!l.unlocked && (
                     <span className="path-threshold">
@@ -204,7 +244,8 @@ export function GamingPage() {
                   </>
                 )}
               </li>
-            ))}
+              );
+            })}
           </ol>
         </>
       )}
