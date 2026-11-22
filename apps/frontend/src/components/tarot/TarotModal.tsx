@@ -17,8 +17,11 @@ export function TarotModal({
   day,
   onClose,
   onOptOut,
+  fromStar = false,
 }: {
   day: string;
+  /** Arriva dalla stella: lo schermo è già scuro e la luce della stella si dissolve nella lettura. */
+  fromStar?: boolean;
   onClose: (reading: TarotReading | null) => void;
   onOptOut?: (optOut: boolean) => void;
 }) {
@@ -110,7 +113,7 @@ export function TarotModal({
   };
 
   return (
-    <div className="tarot-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="tarot-title">
+    <div className={`tarot-modal-backdrop ${fromStar ? 'from-star' : ''}`} role="dialog" aria-modal="true" aria-labelledby="tarot-title">
       <div className="tarot-modal">
         <button type="button" className="tarot-close" aria-label={t('common.close')} onClick={() => onClose(result.current)}>
           ×

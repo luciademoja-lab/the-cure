@@ -669,8 +669,8 @@ export function createApp() {
     '/api/forge/matches/search',
     requireAuth,
     route(async (req, res) => {
-      await db(req.user, 'rpc/forge_find_matches', { method: 'POST', body: {} });
-      res.json(await forgeState(req.user));
+      const { data: found } = await db<number>(req.user, 'rpc/forge_find_matches', { method: 'POST', body: {} });
+      res.json({ ...(await forgeState(req.user)), found: typeof found === 'number' ? found : 0 });
     })
   );
 
@@ -1172,6 +1172,11 @@ export function createApp() {
     if (res.headersSent) return res.end();
     if (err instanceof HttpError) return res.status(err.status).json({ error: err.message });
     console.error('Unhandled error:', err instanceof Error ? err.message : err);
+    // Gli errori di Stripe hanno un tipo che inizia con "Stripe": si dice che il pagamento non è partito.
+    const type = (err as { type?: unknown })?.type;
+    if (typeof type === 'string' && type.startsWith('Stripe')) {
+      return res.status(502).json({ error: 'Il pagamento non è partito. Riprova tra poco o scrivici a write@elayra.app.' });
+    }
     res.status(500).json({ error: 'Errore interno' });
   });
 

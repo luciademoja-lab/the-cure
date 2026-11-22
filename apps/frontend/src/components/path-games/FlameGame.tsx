@@ -53,6 +53,7 @@ export function FlameGame({ onDone }: GameProps) {
     <div
       ref={box}
       className="flame-box"
+      onContextMenu={(e) => e.preventDefault()}
       onPointerMove={(e) => (shield.current = near(e.clientX, e.clientY))}
       onPointerDown={(e) => (shield.current = near(e.clientX, e.clientY))}
       onPointerUp={(e) => e.pointerType !== 'mouse' && (shield.current = false)}

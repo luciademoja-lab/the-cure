@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import '../../styles/SuccessModal.css';
 
 interface SuccessModalProps {
@@ -7,21 +7,25 @@ interface SuccessModalProps {
   autoCloseDelay?: number;
 }
 
-export function SuccessModal({ message, onClose, autoCloseDelay = 3000 }: SuccessModalProps) {
+/**
+ * Un avviso che affiora e si dissolve: niente sfondo, niente riquadro, solo luce e parole.
+ * L'animazione CSS dura quanto autoCloseDelay, poi il componente viene tolto.
+ */
+export function SuccessModal({ message, onClose, autoCloseDelay = 3200 }: SuccessModalProps) {
   useEffect(() => {
-    const timer = setTimeout(() => {
-      onClose();
-    }, autoCloseDelay);
-
+    const timer = setTimeout(onClose, autoCloseDelay);
     return () => clearTimeout(timer);
   }, [onClose, autoCloseDelay]);
 
   return (
-    <div className="success-modal-overlay">
-      <div className="success-modal">
-        <div className="success-icon">✅</div>
-        <p className="success-message">{message}</p>
-      </div>
+    <div
+      className="whisper-toast"
+      role="status"
+      aria-live="polite"
+      style={{ animationDuration: `${autoCloseDelay}ms` }}
+    >
+      <span className="whisper-glow" aria-hidden="true" />
+      <p className="whisper-message">{message}</p>
     </div>
   );
 }
