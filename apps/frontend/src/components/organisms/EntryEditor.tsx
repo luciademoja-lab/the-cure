@@ -168,6 +168,13 @@ export function EntryEditor({ onFinish }: EntryEditorProps) {
             });
           }
         },
+        onReset: () => {
+          if (!started) return;
+          started = false;
+          setIsStreaming(false);
+          setIsThinking(true);
+          setMessages((prev) => prev.slice(0, -1));
+        },
         onNote: (text) => setMessages((prev) => [...prev, { role: 'assistant', content: text }]),
       });
     } catch (e) {

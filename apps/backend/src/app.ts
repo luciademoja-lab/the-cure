@@ -414,6 +414,7 @@ export function createApp() {
           hasHistory: history.length > 0,
           personalNotes: account.elayraNotes,
           onDelta: (text) => send('delta', { text }),
+          onReset: () => send('reset', {}),
           signal: abort.signal,
           model,
         });
@@ -435,6 +436,10 @@ export function createApp() {
       } catch (e) {
         if (!abort.signal.aborted) {
           console.error('Chat error:', e instanceof Error ? e.message : e);
+          // Senza risposta il messaggio non resta in sospeso: riprovando non si accumulano doppioni.
+          if (saved?.[0]?.id) {
+            await db(req.user, `chat_messages?id=eq.${saved[0].id}`, { method: 'DELETE' }).catch(() => undefined);
+          }
           const message =
             translateError(e instanceof HttpError ? e.message : 'In questo momento non riesco a risponderti. Riprova tra poco.');
           send('error', { message });
@@ -992,6 +997,7 @@ export function createApp() {
           morning: rituals.morning.response,
           evening: rituals.evening.response,
           onDelta: (text) => stream.send('delta', { text }),
+          onReset: () => stream.send('reset', {}),
           signal: stream.signal,
           model: account.plan.tier === 'full' ? config.model : config.lightModel,
         });
@@ -1133,6 +1139,7 @@ export function createApp() {
           rituals: ritualsText,
           readings: readingsText,
           onDelta: (text) => stream.send('delta', { text }),
+          onReset: () => stream.send('reset', {}),
           signal: stream.signal,
         });
         const { data: saved } = await adminDb<ReportRow[]>('monthly_reports?on_conflict=user_id,month', {

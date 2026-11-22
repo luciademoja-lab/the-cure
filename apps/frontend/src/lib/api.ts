@@ -88,7 +88,12 @@ export type ChatMessage = { id?: string; role: 'user' | 'assistant'; content: st
  */
 export async function streamChat(
   content: string,
-  opts: { onDelta: (text: string) => void; onNote?: (content: string) => void; signal?: AbortSignal }
+  opts: {
+    onDelta: (text: string) => void;
+    onReset?: () => void;
+    onNote?: (content: string) => void;
+    signal?: AbortSignal;
+  }
 ): Promise<string> {
   const res = await request('/api/chat', { method: 'POST', body: JSON.stringify({ content }), signal: opts.signal });
   if (!res.body) throw new ApiError(0, msg('empty'));
@@ -111,6 +116,10 @@ export async function streamChat(
     if (event === 'delta') {
       full += payload.text;
       opts.onDelta(payload.text);
+    } else if (event === 'reset') {
+      // Il server riprova da capo: il testo arrivato finora si butta.
+      full = '';
+      opts.onReset?.();
     } else if (event === 'done') {
       if (typeof payload.content === 'string') full = payload.content;
       finished = true;

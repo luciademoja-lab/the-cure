@@ -54,6 +54,10 @@ export function TarotModal({
         delta: (p: { text: string }) => {
           target.current += p.text;
         },
+        reset: () => {
+          target.current = '';
+          setShown('');
+        },
         done: (p: TarotReading) => {
           target.current = p.reading;
           result.current = p;

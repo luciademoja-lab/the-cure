@@ -35,3 +35,15 @@ describe('mazzo dei tarocchi', () => {
     expect(recentMonths(2, new Date('2026-01-05T00:00:00Z'))).toEqual(['2026-01', '2025-12']);
   });
 });
+
+import { isComplete } from '../services/ai.service';
+
+describe('isComplete', () => {
+  it('rifiuta risposte vuote o interrotte dal filtro', () => {
+    expect(isComplete('', 'end_turn')).toBe(false);
+    expect(isComplete('Forse è la stessa che stamattina hai ch', 'refusal')).toBe(false);
+  });
+  it('accetta una risposta finita', () => {
+    expect(isComplete('Ciao, Lucia.', 'end_turn')).toBe(true);
+  });
+});

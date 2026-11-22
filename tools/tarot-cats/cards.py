@@ -46,7 +46,8 @@ C[16] = (walking(56, 62, 0.48, rot=-28), '<path d="M30 160 L34 92 L58 92 L62 160
 C[17] = (from_behind(32, 72, 0.86), star(60, 52, 12, 4.5, 8) + star(22, 40, 4, 1.6, 4) + star(98, 48, 4, 1.6, 4) + star(92, 28, 3, 1.2, 4))
 C[18] = (sitting(16, 60, 0.82), moon(88, 52, 14) + '<path d="M76 146 L76 152 M88 140 L88 148 M100 146 L100 152" />')
 C[19] = (stretching(8, 108, 0.94), '<circle cx="60" cy="58" r="15" />' + rays(60, 58, 20, 28, 12))
-C[20] = (from_behind(32, 70, 0.84), '<path d="M30 36 L70 28 L70 50 L30 42 Z M70 28 L84 18 L84 60 L70 50" />' + rays(60, 70, 30, 34, 0))
+# Il Giudizio: il gatto di spalle guarda in alto verso la tromba, che sta sotto il numero e non lo tocca.
+C[20] = (from_behind(36, 80, 0.74), '<path d="M30 48 L62 42 L62 58 L30 54 Z M62 42 L76 34 L76 66 L62 58" /><path d="M84 40 L92 36 M85 50 L94 50 M84 60 L92 64" />')
 C[21] = (curled(60, 104, 26), '<ellipse cx="60" cy="100" rx="40" ry="56" /><path d="M60 40 L66 50 L54 50 Z" /><circle cx="60" cy="47" r="1.6" />')
 
 def card_inner(i):

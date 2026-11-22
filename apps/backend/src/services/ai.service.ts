@@ -44,6 +44,34 @@ function withCacheBreakpoint(turns: ChatTurn[]): Anthropic.MessageParam[] {
   );
 }
 
+/** Una risposta è utilizzabile se ha testo e non è stata interrotta dal filtro di sicurezza del modello. */
+export function isComplete(text: string, stopReason: string | null | undefined): boolean {
+  return text.length > 0 && stopReason !== 'refusal';
+}
+
+/**
+ * Streaming con un secondo tentativo. A volte il modello si ferma a metà (stop_reason "refusal")
+ * o non scrive niente: in quel caso si avvisa il client con onReset, si riprova una volta con l'altro modello
+ * e, se va male di nuovo, si lancia un errore invece di restituire testo vuoto o tronco.
+ */
+async function streamComplete(
+  params: Anthropic.MessageCreateParamsNonStreaming,
+  opts: { onDelta: (text: string) => void; onReset?: () => void; signal?: AbortSignal }
+): Promise<string> {
+  const first = params.model;
+  const second = first === config.model ? config.lightModel : config.model;
+  for (const model of [first, second]) {
+    const stream = anthropic().messages.stream({ ...params, model }, { signal: opts.signal });
+    stream.on('text', (delta) => opts.onDelta(delta));
+    const final = await stream.finalMessage();
+    const text = textOf(final);
+    if (isComplete(text, final.stop_reason)) return text;
+    console.warn('Incomplete reply', { model, stop_reason: final.stop_reason, chars: text.length });
+    if (model === first) opts.onReset?.();
+  }
+  throw new HttpError(503, 'Elayra ha perso il filo a metà frase. Riprova tra un momento.');
+}
+
 function textOf(message: Anthropic.Message): string {
   return message.content
     .filter((b): b is Anthropic.TextBlock => b.type === 'text')
@@ -86,13 +114,14 @@ export const aiService = {
       hasHistory?: boolean;
       personalNotes?: string | null;
       onDelta: (text: string) => void;
+      onReset?: () => void;
       signal?: AbortSignal;
       model?: string;
     }
   ): Promise<string> {
     const messages = normalizeTurns(turns);
     if (messages.length === 0) throw new HttpError(400, 'Nessun messaggio da inviare');
-    const stream = anthropic().messages.stream(
+    return streamComplete(
       {
         model: opts.model || config.model,
         max_tokens: 600,
@@ -110,11 +139,8 @@ export const aiService = {
         ],
         messages: withCacheBreakpoint(messages),
       },
-      { signal: opts.signal }
+      opts
     );
-    stream.on('text', (delta) => opts.onDelta(delta));
-    const final = await stream.finalMessage();
-    return textOf(final);
   },
 
   /** Trasforma una conversazione in una pagina di diario strutturata. */
@@ -296,10 +322,11 @@ export const aiService = {
     morning?: string;
     evening?: string;
     onDelta: (text: string) => void;
+    onReset?: () => void;
     signal?: AbortSignal;
     model?: string;
   }): Promise<string> {
-    const stream = anthropic().messages.stream(
+    return streamComplete(
       {
         model: opts.model || config.model,
         max_tokens: 900,
@@ -329,10 +356,8 @@ export const aiService = {
           },
         ],
       },
-      { signal: opts.signal }
+      opts
     );
-    stream.on('text', (delta) => opts.onDelta(delta));
-    return textOf(await stream.finalMessage());
   },
 
   /**
@@ -346,9 +371,10 @@ export const aiService = {
     rituals: string;
     readings: string;
     onDelta: (text: string) => void;
+    onReset?: () => void;
     signal?: AbortSignal;
   }): Promise<string> {
-    const stream = anthropic().messages.stream(
+    return streamComplete(
       {
         model: config.model,
         max_tokens: 2200,
@@ -380,9 +406,7 @@ export const aiService = {
           },
         ],
       },
-      { signal: opts.signal }
+      opts
     );
-    stream.on('text', (delta) => opts.onDelta(delta));
-    return textOf(await stream.finalMessage());
   },
 };

@@ -107,6 +107,7 @@ export function TarotPage() {
     try {
       await streamEvents('/api/reports/generate', { month }, {
         delta: (p: { text: string }) => setLive((prev) => (prev ? { ...prev, text: prev.text + p.text } : prev)),
+        reset: () => setLive((prev) => (prev ? { ...prev, text: '' } : prev)),
         done: () => undefined,
       });
       await loadReports();
