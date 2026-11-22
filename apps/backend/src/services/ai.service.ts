@@ -44,9 +44,24 @@ function withCacheBreakpoint(turns: ChatTurn[]): Anthropic.MessageParam[] {
   );
 }
 
-/** Una risposta è utilizzabile se ha testo e non è stata interrotta dal filtro di sicurezza del modello. */
+/**
+ * I modelli 5.5 pensano prima di scrivere, e il pensiero consuma max_tokens: con limiti bassi
+ * la risposta arrivava vuota o tagliata (stop_reason "max_tokens"). Qui si spegne il pensiero iniziale:
+ * Haiku 5.5 accetta "disabled", Sonnet 5.5 vuole "between_tools" (stesso effetto senza strumenti).
+ */
+export function thinkingFor(model: string): Record<string, unknown> {
+  if (model.startsWith('claude-haiku-5')) return { thinking: { type: 'disabled' } };
+  if (model.startsWith('claude-sonnet-5-5')) return { thinking: { type: 'between_tools' } };
+  return {};
+}
+
+function tuned<T extends { model: string }>(params: T): T {
+  return { ...params, ...thinkingFor(params.model) } as T;
+}
+
+/** Una risposta è utilizzabile se ha testo e non è stata interrotta (filtro di sicurezza o limite di lunghezza). */
 export function isComplete(text: string, stopReason: string | null | undefined): boolean {
-  return text.length > 0 && stopReason !== 'refusal';
+  return text.length > 0 && stopReason !== 'refusal' && stopReason !== 'max_tokens';
 }
 
 /**
@@ -61,7 +76,7 @@ async function streamComplete(
   const first = params.model;
   const second = first === config.model ? config.lightModel : config.model;
   for (const model of [first, second]) {
-    const stream = anthropic().messages.stream({ ...params, model }, { signal: opts.signal });
+    const stream = anthropic().messages.stream(tuned({ ...params, model }), { signal: opts.signal });
     stream.on('text', (delta) => opts.onDelta(delta));
     const final = await stream.finalMessage();
     const text = textOf(final);
@@ -124,7 +139,7 @@ export const aiService = {
     return streamComplete(
       {
         model: opts.model || config.model,
-        max_tokens: 600,
+        max_tokens: 1600,
         // La cache dei prompt fa pagare un decimo (o meno) le parti già lette: istruzioni e conversazione precedente.
         system: [
           {
@@ -151,9 +166,9 @@ export const aiService = {
       .map((t) => `${t.role === 'user' ? 'UTENTE' : 'ELAYRA'}: ${t.content}`)
       .join('\n')
       .slice(-24000);
-    const message = await anthropic().messages.create({
+    const message = await anthropic().messages.create(tuned({
       model: config.lightModel,
-      max_tokens: 800,
+      max_tokens: 2000,
       system:
         `Estrai una pagina di diario da una conversazione. Basati solo su ciò che l'utente ha scritto, senza interpretare né aggiungere. Scrivi ${lang()}.`,
       tools: [
@@ -174,7 +189,7 @@ export const aiService = {
       ],
       tool_choice: { type: 'tool', name: 'salva_pagina' },
       messages: [{ role: 'user', content: `Conversazione:\n\n${transcript}` }],
-    });
+    }));
     const block = message.content.find((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use');
     const input = (block?.input || {}) as Record<string, unknown>;
     const mood = typeof input.mood === 'number' ? Math.min(10, Math.max(1, Math.round(input.mood))) : 5;
@@ -201,9 +216,9 @@ export const aiService = {
       .join('\n')
       .slice(-16000);
     if (!transcript.trim()) return null;
-    const message = await anthropic().messages.create({
+    const message = await anthropic().messages.create(tuned({
       model: config.lightModel,
-      max_tokens: 700,
+      max_tokens: 2000,
       system:
         "Leggi i messaggi di una persona e stabilisci se sta sviluppando un progetto o un'idea creativa concreta (qualcosa che vuole costruire, scrivere, avviare). " +
         `Non basta un desiderio vago o uno sfogo. Se il progetto c'è, descrivilo ${lang()} usando solo ciò che la persona ha detto del progetto. ` +
@@ -228,7 +243,7 @@ export const aiService = {
       ],
       tool_choice: { type: 'tool', name: 'valuta_forgia' },
       messages: [{ role: 'user', content: transcript }],
-    });
+    }));
     const block = message.content.find((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use');
     const input = (block?.input || {}) as Record<string, unknown>;
     if (input.has_project !== true) return null;
@@ -248,9 +263,9 @@ export const aiService = {
       .map((m) => `${m.from}: ${m.content}`)
       .join('\n')
       .slice(-20000);
-    const message = await anthropic().messages.create({
+    const message = await anthropic().messages.create(tuned({
       model: config.model,
-      max_tokens: 900,
+      max_tokens: 2400,
       system: [
         {
           type: 'text',
@@ -273,7 +288,7 @@ export const aiService = {
             `${opts.caller} ti chiede: ${opts.request}`,
         },
       ],
-    });
+    }));
     return textOf(message);
   },
 
@@ -286,9 +301,9 @@ export const aiService = {
       .map((m) => `${m.from}: ${m.content}`)
       .join('\n')
       .slice(-24000);
-    const message = await anthropic().messages.create({
+    const message = await anthropic().messages.create(tuned({
       model: config.model,
-      max_tokens: 1400,
+      max_tokens: 3000,
       system: [
         {
           type: 'text',
@@ -309,7 +324,7 @@ export const aiService = {
             `Note aggiunte da chi chiede il brief: ${opts.notes || '(nessuna)'}`,
         },
       ],
-    });
+    }));
     return textOf(message);
   },
   /**
@@ -329,7 +344,7 @@ export const aiService = {
     return streamComplete(
       {
         model: opts.model || config.model,
-        max_tokens: 900,
+        max_tokens: 2400,
         system: [
           {
             type: 'text',
@@ -377,7 +392,7 @@ export const aiService = {
     return streamComplete(
       {
         model: config.model,
-        max_tokens: 2200,
+        max_tokens: 6000,
         system: [
           {
             type: 'text',

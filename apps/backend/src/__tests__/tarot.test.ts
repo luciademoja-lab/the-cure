@@ -36,14 +36,23 @@ describe('mazzo dei tarocchi', () => {
   });
 });
 
-import { isComplete } from '../services/ai.service';
+import { isComplete, thinkingFor } from '../services/ai.service';
 
 describe('isComplete', () => {
   it('rifiuta risposte vuote o interrotte dal filtro', () => {
     expect(isComplete('', 'end_turn')).toBe(false);
     expect(isComplete('Forse è la stessa che stamattina hai ch', 'refusal')).toBe(false);
+    expect(isComplete('Benvenuta, Sophia. Oggi ti sei pres', 'max_tokens')).toBe(false);
   });
   it('accetta una risposta finita', () => {
     expect(isComplete('Ciao, Lucia.', 'end_turn')).toBe(true);
+  });
+});
+
+describe('thinkingFor', () => {
+  it('spegne il pensiero iniziale dei modelli 5.5', () => {
+    expect(thinkingFor('claude-haiku-5-5')).toEqual({ thinking: { type: 'disabled' } });
+    expect(thinkingFor('claude-sonnet-5-5')).toEqual({ thinking: { type: 'between_tools' } });
+    expect(thinkingFor('claude-opus-4-1')).toEqual({});
   });
 });
