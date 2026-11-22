@@ -51,7 +51,7 @@ export class SpeechQueue {
   }
 
   private say(sentence: string) {
-    const clean = sentence.replace(/[*_#>`]/g, '').trim();
+    const clean = sentence.replace(/\[\[[^\]]*\]\]/g, '').replace(/[*_#>`]/g, '').trim();
     if (!clean) return;
     const u = new SpeechSynthesisUtterance(clean);
     u.lang = speechLang(this.locale);

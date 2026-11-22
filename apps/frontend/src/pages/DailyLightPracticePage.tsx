@@ -11,6 +11,24 @@ import { Link } from 'react-router-dom';
 import { TarotStar } from '../components/tarot/TarotStar';
 import { TarotModal } from '../components/tarot/TarotModal';
 import type { TarotReading } from '../components/tarot/tarotTypes';
+import { ElayraWhisper } from '../components/atoms/ElayraWhisper';
+
+/** I suggerimenti di Elayra si vedono finché la persona non ha fatto quella pratica almeno una volta. */
+const hintKey = (uid: string, kind: string) => `elayra:hint:${uid}:${kind}`;
+const hintSeen = (uid: string | undefined, kind: string) => {
+  try {
+    return !uid || localStorage.getItem(hintKey(uid, kind)) === '1';
+  } catch {
+    return true;
+  }
+};
+const markHint = (uid: string | undefined, kind: string) => {
+  try {
+    if (uid) localStorage.setItem(hintKey(uid, kind), '1');
+  } catch {
+    /* niente */
+  }
+};
 
 type RitualKind = 'morning' | 'evening';
 type SavedRitual = { kind: RitualKind; day: string; response: string; light_points: number };
@@ -69,6 +87,7 @@ export function DailyLightPracticePage() {
     try {
       const { ritual } = await apiPost<{ ritual: SavedRitual }>('/api/rituals', { kind, day: localDay(), response: text });
       setSaved((prev) => ({ ...prev, [kind]: ritual }));
+      markHint(user?.id, kind);
       // Entrambe le pratiche fatte: arriva la stella della lettura (se la persona la vuole).
       const other = kind === 'morning' ? saved.evening : saved.morning;
       if (other) {
@@ -158,8 +177,24 @@ export function DailyLightPracticePage() {
       )}
 
       <div className="daily-rituals-container">
-        {saved.morning ? done('morning', 'dailyLight.morningReady') : <MorningRitual onComplete={(r) => complete('morning', r)} />}
-        {saved.evening ? done('evening', 'dailyLight.eveningReady') : <EveningRitual onComplete={(r) => complete('evening', r)} />}
+        {saved.morning ? (
+          done('morning', 'dailyLight.morningReady')
+        ) : (
+          <div className={`ritual-guide ${!hintSeen(user?.id, 'morning') ? 'is-lit' : ''}`}>
+            {!hintSeen(user?.id, 'morning') && <ElayraWhisper className="ritual-guide-hint" text={t('guide.morning')} delay={900} />}
+            <MorningRitual onComplete={(r) => complete('morning', r)} />
+          </div>
+        )}
+        {saved.evening ? (
+          done('evening', 'dailyLight.eveningReady')
+        ) : (
+          <div className={`ritual-guide ${saved.morning && !hintSeen(user?.id, 'evening') ? 'is-lit' : ''}`}>
+            {saved.morning && !hintSeen(user?.id, 'evening') && (
+              <ElayraWhisper className="ritual-guide-hint" text={t('guide.evening')} delay={700} />
+            )}
+            <EveningRitual onComplete={(r) => complete('evening', r)} />
+          </div>
+        )}
       </div>
     </main>
   );

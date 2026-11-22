@@ -5,8 +5,23 @@ import { apiGet, apiPost, streamEvents } from '../lib/api';
 import { TarotSpread, TarotText } from '../components/tarot/TarotSpread';
 import type { TarotReading } from '../components/tarot/tarotTypes';
 
-type MonthInfo = { month: string; unlocked: boolean; report: { content: string; createdAt: string } | null };
-type ReportsState = { included: boolean; priceCents: number; months: MonthInfo[] };
+type PeriodInfo = {
+  /** 'first30' oppure 'AAAA-MM'. */
+  id: string;
+  kind: 'first30' | 'month';
+  from: string;
+  to: string;
+  unlocked: boolean;
+  report: { content: string; createdAt: string } | null;
+};
+type ReportsState = {
+  included: boolean;
+  priceCents: number;
+  activeDays: number;
+  firstNeeded: number;
+  monthNeeded: number;
+  periods: PeriodInfo[];
+};
 
 const tag = (locale: string) => (locale === 'it' ? 'it-IT' : 'en-GB');
 
@@ -62,7 +77,7 @@ export function TarotPage() {
       setNotice(t('reports.paid'));
       const tick = async () => {
         const data = await loadReports().catch(() => null);
-        const m = data?.months.find((x) => x.month === paidMonth);
+        const m = data?.periods.find((x) => x.id === paidMonth);
         if (m?.unlocked || polls.current >= 6) {
           setParams({}, { replace: true });
           return;
@@ -88,11 +103,11 @@ export function TarotPage() {
     }
   };
 
-  const buy = async (month: string) => {
-    setBusy(month);
+  const buy = async (period: string) => {
+    setBusy(period);
     setError('');
     try {
-      const { url } = await apiPost<{ url: string }>('/api/reports/checkout', { month });
+      const { url } = await apiPost<{ url: string }>('/api/reports/checkout', { period });
       window.location.href = url;
     } catch (e) {
       setError(e instanceof Error ? e.message : t('chat.error.generic'));
@@ -105,7 +120,7 @@ export function TarotPage() {
     setError('');
     setLive({ month, text: '' });
     try {
-      await streamEvents('/api/reports/generate', { month }, {
+      await streamEvents('/api/reports/generate', { period: month }, {
         delta: (p: { text: string }) => setLive((prev) => (prev ? { ...prev, text: prev.text + p.text } : prev)),
         reset: () => setLive((prev) => (prev ? { ...prev, text: '' } : prev)),
         done: () => undefined,
@@ -120,8 +135,12 @@ export function TarotPage() {
     }
   };
 
-  const monthName = (m: string) =>
-    new Date(`${m}-15T12:00:00Z`).toLocaleDateString(tag(locale), { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  const shortDay = (d: string) =>
+    new Date(`${d}T12:00:00Z`).toLocaleDateString(tag(locale), { day: 'numeric', month: 'long', timeZone: 'UTC' });
+  const periodName = (p: PeriodInfo) =>
+    p.kind === 'first30'
+      ? t('reports.first30', { from: shortDay(p.from), to: shortDay(p.to) })
+      : new Date(`${p.id}-15T12:00:00Z`).toLocaleDateString(tag(locale), { month: 'long', year: 'numeric', timeZone: 'UTC' });
   const price = reports ? (reports.priceCents / 100).toLocaleString(tag(locale), { style: 'currency', currency: 'EUR' }) : '';
   const dayName = (d: string) =>
     new Date(`${d}T12:00:00Z`).toLocaleDateString(tag(locale), { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
@@ -147,31 +166,48 @@ export function TarotPage() {
       <section className="card">
         <h2>{t('reports.title')}</h2>
         <p>{reports?.included ? t('reports.leadIncluded') : t('reports.leadFree', { price })}</p>
+        {reports && reports.periods.length === 0 && (
+          <div className="report-waiting">
+            <p>{t('reports.notYet', { needed: reports.firstNeeded })}</p>
+            <div
+              className="path-bar"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={reports.firstNeeded}
+              aria-valuenow={reports.activeDays}
+              aria-label={t('reports.daysLabel')}
+            >
+              <div className="path-bar-fill" style={{ width: `${Math.min(100, (reports.activeDays / reports.firstNeeded) * 100)}%` }} />
+            </div>
+            <p className="profile-muted">{t('reports.daysSoFar', { days: reports.activeDays, needed: reports.firstNeeded })}</p>
+          </div>
+        )}
+        {reports && reports.periods.length > 0 && <p className="profile-muted">{t('reports.monthRule', { days: reports.monthNeeded })}</p>}
         <ul className="report-months">
-          {reports?.months.map((m) => (
-            <li key={m.month} className="report-month">
+          {reports?.periods.map((m) => (
+            <li key={m.id} className="report-month">
               <div className="report-month-head">
-                <strong>{monthName(m.month)}</strong>
+                <strong>{periodName(m)}</strong>
                 {m.report ? (
-                  <button type="button" className="cta-button secondary" onClick={() => setOpen(open === m.month ? null : m.month)}>
-                    {open === m.month ? t('reports.hide') : t('reports.read')}
+                  <button type="button" className="cta-button secondary" onClick={() => setOpen(open === m.id ? null : m.id)}>
+                    {open === m.id ? t('reports.hide') : t('reports.read')}
                   </button>
                 ) : m.unlocked ? (
-                  <button type="button" className="cta-button primary" disabled={busy !== null} onClick={() => void generate(m.month)}>
-                    {busy === m.month ? t('reports.writing') : t('reports.ask')}
+                  <button type="button" className="cta-button primary" disabled={busy !== null} onClick={() => void generate(m.id)}>
+                    {busy === m.id ? t('reports.writing') : t('reports.ask')}
                   </button>
                 ) : (
-                  <button type="button" className="cta-button primary" disabled={busy !== null} onClick={() => void buy(m.month)}>
+                  <button type="button" className="cta-button primary" disabled={busy !== null} onClick={() => void buy(m.id)}>
                     {t('reports.unlock', { price })}
                   </button>
                 )}
               </div>
-              {live?.month === m.month && (
+              {live?.month === m.id && (
                 <div className="report-live" aria-live="polite">
                   {live.text ? <ReportText text={live.text} /> : <p className="tarot-waiting">{t('reports.gathering')}</p>}
                 </div>
               )}
-              {open === m.month && m.report && <ReportText text={m.report.content} />}
+              {open === m.id && m.report && <ReportText text={m.report.content} />}
             </li>
           ))}
         </ul>

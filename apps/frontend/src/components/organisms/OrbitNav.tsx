@@ -1,6 +1,9 @@
 import { CSSProperties, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from '../../i18n/I18nProvider';
+import { useAuth } from '../../contexts/AuthContext';
+import { loadDiscovery, markDiscovered, pageByPath, PAGES, resetDiscovery, useDiscovery } from '../../lib/discovery';
+import { ElayraWhisper } from '../atoms/ElayraWhisper';
 
 /**
  * Menu orbitale (solo desktop).
@@ -9,6 +12,8 @@ import { useTranslation } from '../../i18n/I18nProvider';
  * - Nelle altre pagine si rimpicciolisce e scivola in basso a sinistra, continuando a ruotare.
  *   Passandoci sopra si apre come menu a tendina.
  * - Tornando in home, si riespande attorno al testo.
+ * - Chi è entrato vede solo le pagine che ha già scoperto; le altre sono posti vuoti.
+ *   Alla prima visita il cerchio è fermo, "Journal" si illumina ed Elayra scrive accanto da dove partire.
  */
 
 const DOCK_SIZE = 84; // diametro del piccolo astro in basso a sinistra
@@ -44,16 +49,27 @@ export function OrbitNav() {
 
   const isHome = location.pathname === '/';
 
-  const links = [
-    { path: '/journal', label: t('nav.journal') },
-    { path: '/daily-light', label: t('nav.dailyLight') },
-    { path: '/tarot', label: t('nav.tarot') },
-    { path: '/gaming', label: t('nav.path') },
-    { path: '/synchronicities', label: t('nav.synchronicities') },
-    { path: '/forge', label: t('nav.forge') },
-    { path: '/collective', label: t('nav.collective') },
-    { path: '/plans', label: t('nav.plans') },
-  ];
+  const { isAuthenticated, user } = useAuth();
+  const visible = useDiscovery();
+
+  // Le pagine scoperte: si ricaricano cambiando pagina (i Tarocchi si aprono da soli con la prima lettura),
+  // e visitare una pagina nuova la accende.
+  useEffect(() => {
+    if (!isAuthenticated) {
+      resetDiscovery();
+      return;
+    }
+    void (async () => {
+      await loadDiscovery();
+      const page = pageByPath(location.pathname);
+      if (page) await markDiscovered(page.key);
+    })();
+  }, [isAuthenticated, user?.id, location.pathname]);
+
+  // Chi non è entrato vede tutto il cerchio (è la vetrina); chi è entrato solo ciò che ha scoperto.
+  const shown = (key: string) => !isAuthenticated || (visible ? visible.includes(key as never) : key === 'journal');
+  const links = PAGES.map((p) => ({ path: p.path, label: t(p.label), shown: shown(p.key) }));
+  const guide = isAuthenticated && isHome && visible !== null && visible.length === 1;
 
   useEffect(() => {
     const onResize = () => {
@@ -137,7 +153,9 @@ export function OrbitNav() {
   return (
     <>
       <div
-        className={`orbit ${isHome ? 'orbit--home' : 'orbit--dock'} ${paused ? 'orbit--paused' : ''} ${open ? 'orbit--open' : ''}`}
+        className={`orbit ${isHome ? 'orbit--home' : 'orbit--dock'} ${paused ? 'orbit--paused' : ''} ${open ? 'orbit--open' : ''} ${
+          guide ? 'orbit--guide' : ''
+        }`}
         style={style}
         onMouseEnter={small ? undefined : openMenu}
         onMouseLeave={small ? undefined : closeMenu}
@@ -146,15 +164,19 @@ export function OrbitNav() {
       >
         <div className="orbit-halo" />
         <ul className="orbit-ring">
-          {links.map(({ path, label }, i) => {
+          {links.map(({ path, label, shown: isShown }, i) => {
             const angle = (360 / links.length) * i - 90;
             return (
               <li
                 key={path}
-                className="orbit-slot"
+                className={`orbit-slot ${isShown ? '' : 'is-empty'}`}
                 style={{ transform: `rotate(${angle}deg) translate(var(--orbit-radius)) rotate(${-angle}deg)` }}
               >
                 <span className="orbit-upright">
+                  {!isShown ? (
+                    <span className="orbit-empty" aria-hidden="true" />
+                  ) : (
+                  <>
                   <button
                     type="button"
                     className={`orbit-word ${location.pathname === path ? 'is-current' : ''}`}
@@ -168,6 +190,13 @@ export function OrbitNav() {
                     {label}
                   </button>
                   <span className="orbit-spark" aria-hidden="true" />
+                  {guide && path === '/journal' && (
+                    <span className="orbit-guide-hint">
+                      <ElayraWhisper text={t('guide.home')} delay={1400} />
+                    </span>
+                  )}
+                  </>
+                  )}
                 </span>
               </li>
             );
@@ -186,18 +215,24 @@ export function OrbitNav() {
           <button type="button" className="orbit-dropdown-link" onClick={() => go('/')}>
             ✦ {t('nav.home')}
           </button>
-          {links.map(({ path, label }) => (
-            <button
-              key={path}
-              type="button"
-              className={`orbit-dropdown-link ${location.pathname === path ? 'is-current' : ''}`}
-              onClick={() => go(path)}
-              onFocus={openMenu}
-              onBlur={closeMenu}
-            >
-              {label}
-            </button>
-          ))}
+          {links.map(({ path, label, shown: isShown }) =>
+            isShown ? (
+              <button
+                key={path}
+                type="button"
+                className={`orbit-dropdown-link ${location.pathname === path ? 'is-current' : ''}`}
+                onClick={() => go(path)}
+                onFocus={openMenu}
+                onBlur={closeMenu}
+              >
+                {label}
+              </button>
+            ) : (
+              <span key={path} className="orbit-dropdown-empty" title={t('guide.emptySlot')}>
+                · · ·
+              </span>
+            )
+          )}
         </nav>
       )}
     </>

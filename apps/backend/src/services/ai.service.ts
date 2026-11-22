@@ -2,6 +2,7 @@ import { currentLocale } from '../locale';
 import Anthropic from '@anthropic-ai/sdk';
 import { config } from '../config';
 import { buildElayraSystemPrompt } from '../elayra.prompt';
+import { stripMarks } from '../discovery';
 import { HttpError } from './supabase';
 import { FORGE_AREAS, FORGE_PROJECT_TYPES, FORGE_STYLES, ForgeDraft, sanitizeDraft } from '../forge';
 
@@ -128,6 +129,7 @@ export const aiService = {
       nickname?: string | null;
       hasHistory?: boolean;
       personalNotes?: string | null;
+      discovery?: string;
       onDelta: (text: string) => void;
       onReset?: () => void;
       signal?: AbortSignal;
@@ -148,6 +150,7 @@ export const aiService = {
               nickname: opts.nickname,
               hasHistory: opts.hasHistory,
               personalNotes: opts.personalNotes,
+              discovery: opts.discovery,
             }),
             cache_control: { type: 'ephemeral' },
           },
@@ -163,7 +166,7 @@ export const aiService = {
     turns: ChatTurn[]
   ): Promise<{ mood: number; energy: 'low' | 'moderate' | 'high'; sensation: string; contentSummary: string }> {
     const transcript = turns
-      .map((t) => `${t.role === 'user' ? 'UTENTE' : 'ELAYRA'}: ${t.content}`)
+      .map((t) => `${t.role === 'user' ? 'UTENTE' : 'ELAYRA'}: ${stripMarks(t.content)}`)
       .join('\n')
       .slice(-24000);
     const message = await anthropic().messages.create(tuned({
@@ -381,6 +384,8 @@ export const aiService = {
    */
   async streamMonthlyReport(opts: {
     monthLabel: string;
+    /** 'first30': i primi trenta giorni di uso, anche sparsi su più mesi. */
+    period?: 'month' | 'first30';
     nickname?: string | null;
     entries: string;
     rituals: string;
@@ -397,15 +402,21 @@ export const aiService = {
           {
             type: 'text',
             text:
-              'Sei Elayra. Scrivi il report mensile di una persona che usa la tua app: lo rilegge lei, per vedere il cammino del mese. ' +
+              (opts.period === 'first30'
+                ? 'Sei Elayra. Scrivi il report dei primi trenta giorni in cui una persona ha usato la tua app (anche se sparsi su più mesi): lo rilegge lei, per vedere il cammino fatto finora. ' +
+                  'Alla fine, in una frase, dille che se vuole un report per ogni mese le basta tornare quasi ogni giorno. '
+                : 'Sei Elayra. Scrivi il report mensile di una persona che usa la tua app: lo rilegge lei, per vedere il cammino del mese. ') +
               'Usa solo ciò che c’è nei dati: pagine di diario (con umore da 1 a 10 ed energia), pratiche del mattino e della sera, letture dei tarocchi. ' +
               'Non inventare eventi, persone o numeri. Se i dati sono pochi, dillo con semplicità e scrivi un report più breve. ' +
               'Non fare diagnosi e non usare linguaggio clinico. ' +
               'Sulle carte sii onesta: non sono previsioni. Racconta dove le immagini delle letture hanno trovato un’eco in ciò che la persona ha scritto e dove no, ' +
               'senza sostenere che le carte avessero previsto qualcosa. ' +
               `Scrivi ${lang()}, in testo semplice, con queste sezioni nell'ordine, ognuna con il titolo in maiuscolo su una riga da sola: ` +
-              'IL MESE IN BREVE, COME TI SEI SENTITA O SENTITO (andamento di umore ed energia, con i numeri che ci sono), CIÒ CHE RITORNA (temi e parole ricorrenti), ' +
-              'LE CARTE E IL CAMMINO (il confronto), CIÒ CHE È CRESCIUTO, UN PASSO PER IL MESE CHE VIENE (uno solo, concreto e gentile). ' +
+              (opts.period === 'first30' ? 'I PRIMI TRENTA GIORNI IN BREVE' : 'IL MESE IN BREVE') +
+              ', COME TI SEI SENTITA O SENTITO (andamento di umore ed energia, con i numeri che ci sono), CIÒ CHE RITORNA (temi e parole ricorrenti), ' +
+              'LE CARTE E IL CAMMINO (il confronto), CIÒ CHE È CRESCIUTO, ' +
+              (opts.period === 'first30' ? 'UN PASSO PER I GIORNI CHE VENGONO' : 'UN PASSO PER IL MESE CHE VIENE') +
+              ' (uno solo, concreto e gentile). ' +
               'Rivolgiti alla persona con il tu. Tono caldo e chiaro, frasi brevi. Non firmarti.',
             cache_control: { type: 'ephemeral' },
           },
@@ -414,7 +425,7 @@ export const aiService = {
           {
             role: 'user',
             content:
-              `Mese: ${opts.monthLabel}\n${opts.nickname ? `Nome: ${opts.nickname}\n` : ''}\n` +
+              `${opts.period === 'first30' ? 'Periodo' : 'Mese'}: ${opts.monthLabel}\n${opts.nickname ? `Nome: ${opts.nickname}\n` : ''}\n` +
               `PAGINE DI DIARIO:\n${opts.entries || '(nessuna)'}\n\n` +
               `PRATICHE DELLA LUCE DEL GIORNO:\n${opts.rituals || '(nessuna)'}\n\n` +
               `LETTURE DEI TAROCCHI:\n${opts.readings || '(nessuna)'}`,
