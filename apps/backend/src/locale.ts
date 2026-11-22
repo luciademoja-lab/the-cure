@@ -83,6 +83,7 @@ const EN: Record<string, string> = {
   'Il report di questo mese si sblocca con 0,99 € o con un piano a pagamento': 'This month’s report unlocks for €0.99 or with a paid plan',
   'In questo mese non c’è ancora niente da raccontare: scrivi nel diario o fai le pratiche, poi torna qui': 'There is nothing to tell for this month yet: write in your journal or do the practices, then come back',
   'In questo momento non riesco a risponderti. Riprova tra poco.': 'I can’t answer you right now. Please try again in a moment.',
+  'Elayra ha perso il filo a metà frase. Riprova tra un momento.': 'Elayra lost the thread mid-sentence. Please try again in a moment.',
 };
 
 const PLAN_EN: Record<string, string> = { Seme: 'Seed', Forgia: 'Forge' };
