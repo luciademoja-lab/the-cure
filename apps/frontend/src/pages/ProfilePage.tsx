@@ -25,6 +25,30 @@ async function toSquareWebp(file: File, side = 320): Promise<Blob> {
   );
 }
 
+/** Il codice di invito accanto al nome: un tocco copia il link per invitare qualcuno. */
+function ReferralChip({ code }: { code: string }) {
+  const { t } = useTranslation();
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/register?ref=${code}`);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      /* senza appunti il codice resta comunque leggibile */
+    }
+  };
+  return (
+    <button type="button" className="profile-referral" onClick={() => void copy()} title={t('profile.referralCopy')}>
+      <span className="profile-referral-label">{t('profile.referral')}</span>
+      <code>{code}</code>
+      <span className="profile-referral-hint" aria-live="polite">
+        {copied ? t('profile.referralCopied') : t('profile.referralCopy')}
+      </span>
+    </button>
+  );
+}
+
 export function ProfilePage() {
   const { t, locale } = useTranslation();
   const { user } = useAuth();
@@ -122,7 +146,10 @@ export function ProfilePage() {
       <header className="profile-head">
         <UserAvatar kind={account.avatarKind} path={account.avatarPath} name={account.nickname} size={88} />
         <div>
-          <h1>{account.nickname}</h1>
+          <div className="profile-title">
+            <h1>{account.nickname}</h1>
+            {account.referralCode && <ReferralChip code={account.referralCode} />}
+          </div>
           <p className="profile-email">{user?.email}</p>
         </div>
       </header>

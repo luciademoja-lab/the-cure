@@ -22,7 +22,19 @@ export type DiscoveryFacts = {
   activeDays: number;
   /** Rituali della Daily Light completati in tutto. */
   rituals?: number;
+  /** Elayra ha riconosciuto un progetto e ha preparato l'invito alla Forgia. */
+  forgeReady?: boolean;
 };
+
+/**
+ * Le due pagine che non si aprono a richiesta: la Sincronicità senza abbastanza pagine sarebbe vuota,
+ * la Forgia serve solo a chi sta costruendo qualcosa. Tutte le altre la persona può chiederle quando vuole.
+ */
+export function canOpen(page: PageKey, facts: Pick<DiscoveryFacts, 'journalEntries' | 'forgeReady'>): boolean {
+  if (page === 'synchronicities') return facts.journalEntries >= SYNC_MIN_ENTRIES;
+  if (page === 'forge') return Boolean(facts.forgeReady);
+  return true;
+}
 
 /**
  * Le pagine visibili nel menu: quelle visitate, più due che si aprono da sole:
@@ -89,10 +101,24 @@ export function discoveryContext(facts: DiscoveryFacts): string {
   if (!visible.includes('collective') && facts.activeDays >= 3) ready.push('collective: quando parla delle persone che ha intorno o di condividere');
   if (!visible.includes('forge')) ready.push('forge: solo se nelle sue parole c’è un progetto da costruire; altrimenti mai');
   if (!visible.includes('diary'))
-    ready.push('diary: si apre da sola dopo la mezzanotte della prima conversazione; puoi dirlo, senza pulsante');
-  if (!visible.includes('tarot')) ready.push('tarot: si apre da sola con la prima lettura, quando completa le due pratiche dello stesso giorno; puoi accennarlo, non serve il pulsante');
+    ready.push('diary: si apre da sola dopo la mezzanotte della prima conversazione; puoi dirlo, senza pulsante, a meno che non la chieda');
+  if (!visible.includes('tarot')) ready.push('tarot: si apre da sola con la prima lettura, quando completa le due pratiche dello stesso giorno; puoi accennarlo, non serve il pulsante a meno che non la chieda');
   if (!visible.includes('plans')) ready.push('plans: solo se chiede dei piani o finisce le risposte del mese');
   if (ready.length) lines.push(`Quando ha senso proporle:\n- ${ready.join('\n- ')}`);
+  if (hidden.length) {
+    const onRequest = hidden.filter((k) => canOpen(k, facts));
+    const locked = hidden.filter((k) => !canOpen(k, facts));
+    lines.push(
+      `Se la persona ti chiede di vedere o aprire una pagina, aprigliela subito con il suo pulsante, anche se non è il momento che avresti scelto tu. Si possono aprire a richiesta: ${
+        onRequest.length ? onRequest.map((k) => `${LABEL[k]} [${k}]`).join(', ') : 'nessuna'
+      }.` +
+        (locked.length
+          ? ` Non ancora pronte, quindi niente pulsante anche se la chiede: ${locked
+              .map((k) => (k === 'forge' ? 'La Forgia (si apre quando nelle sue parole riconosci un progetto da costruire)' : `Sincronicità (servono almeno ${SYNC_MIN_ENTRIES} pagine di diario)`))
+              .join(', ')}. Diglielo con dolcezza e spiega cosa serve.`
+          : '')
+    );
+  }
   return lines.join('\n');
 }
 

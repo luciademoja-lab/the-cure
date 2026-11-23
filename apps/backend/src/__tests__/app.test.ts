@@ -768,6 +768,25 @@ describe('scoperta dell’app', () => {
     expect((await request(app).post('/api/discovery').set(authed).send({ page: 'admin' })).status).toBe(400);
   });
 
+  it('Sincronicità e Forgia non entrano nel menu finché non sono pronte', async () => {
+    profileRow = { ...profileRow, discovered_pages: ['journal'] };
+    adminCalls.length = 0;
+    const sync = await request(app).post('/api/discovery').set(authed).send({ page: 'synchronicities' });
+    expect(sync.status).toBe(200);
+    expect(sync.body.visible).not.toContain('synchronicities');
+    const forge = await request(app).post('/api/discovery').set(authed).send({ page: 'forge' });
+    expect(forge.body.visible).not.toContain('forge');
+    expect(adminCalls.some((c: Row) => String(c.url || c.path || c).includes('profiles'))).toBe(false);
+  });
+
+  it('Elayra sa che può aprire una pagina a richiesta, tranne Sincronicità e Forgia', async () => {
+    profileRow = { ...profileRow, discovered_pages: ['journal'] };
+    await request(app).post('/api/chat').set(authed).send({ content: 'fammi vedere il percorso' });
+    const text = streamCalls[0].system[0].text;
+    expect(text).toContain('aprigliela subito');
+    expect(text).toMatch(/Non ancora pronte[^\n]*La Forgia/);
+  });
+
   it('Elayra sa quali pagine mancano', async () => {
     profileRow = { ...profileRow, discovered_pages: ['journal'] };
     await request(app).post('/api/chat').set(authed).send({ content: 'ciao' });

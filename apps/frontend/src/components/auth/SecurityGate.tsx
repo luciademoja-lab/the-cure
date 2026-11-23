@@ -40,9 +40,9 @@ export function SecurityGate({ children }: { children: ReactNode }) {
       const { data: aal, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
       if (aalError) throw aalError;
       if (aal?.currentLevel === 'aal2') {
-        // Il menu si carica solo dopo la 2FA: appena passata, le pagine scoperte si accendono.
-        void loadDiscovery();
         const me = await loadAccount();
+        // Il menu si carica solo dopo la 2FA: appena si entra, le pagine scoperte si accendono.
+        if (me.onboarded) void loadDiscovery();
         setStep(me.onboarded ? { kind: 'ready' } : { kind: 'onboarding' });
         return;
       }

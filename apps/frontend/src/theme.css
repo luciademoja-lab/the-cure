@@ -3354,3 +3354,47 @@ html.is-home body {
     box-shadow: 0 0 0 1px rgba(236, 212, 154, 0.8), 0 0 40px rgba(207, 165, 74, 0.3);
   }
 }
+
+/* Il codice di invito accanto al nome, nel profilo. */
+.profile-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.9rem;
+}
+.profile-referral {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0 0.5rem;
+  padding: 0.3rem 0.85rem;
+  border: 1px solid rgba(207, 165, 74, 0.5);
+  border-radius: 999px;
+  background: rgba(207, 165, 74, 0.08);
+  color: var(--gold-light);
+  font-family: var(--font-heading);
+  cursor: pointer;
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+.profile-referral:hover,
+.profile-referral:focus-visible {
+  background: rgba(207, 165, 74, 0.16);
+  box-shadow: 0 0 16px rgba(207, 165, 74, 0.25);
+  outline: none;
+}
+.profile-referral-label {
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+.profile-referral code {
+  font-size: 1.05rem;
+  letter-spacing: 0.08em;
+  color: var(--gold-light);
+  background: none;
+}
+.profile-referral-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
