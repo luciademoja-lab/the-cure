@@ -114,6 +114,14 @@ describe('Elayra in più messaggi', () => {
     expect(splitElayra('x\n[[pagina:admin]]')).toEqual([{ text: 'x', pages: [] }]);
   });
 
+  it('riconosce il pulsante anche se Elayra scrive il nome della pagina in italiano', () => {
+    const parts = splitElayra('Eccolo.\n[[pagina:diario]]\n[[pausa]]\nE qui.\n[[Pagina: Daily Light]]');
+    expect(parts).toEqual([
+      { text: 'Eccolo.', pages: ['diary'] },
+      { text: 'E qui.', pages: ['daily-light'] },
+    ]);
+  });
+
   it('mostra tutte le bolle di un messaggio già salvato, con il pulsante', () => {
     render(
       <MemoryRouter>

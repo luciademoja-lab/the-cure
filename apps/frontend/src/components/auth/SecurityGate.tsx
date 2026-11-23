@@ -1,6 +1,7 @@
 import { ReactNode, useCallback, useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { apiGet, apiPost } from '../../lib/api';
+import { loadDiscovery } from '../../lib/discovery';
 import { useTranslation } from '../../i18n/I18nProvider';
 import { useAuth, pendingReferral, clearReferral } from '../../contexts/AuthContext';
 import { Account, AccountContext } from '../../contexts/AccountContext';
@@ -39,6 +40,8 @@ export function SecurityGate({ children }: { children: ReactNode }) {
       const { data: aal, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
       if (aalError) throw aalError;
       if (aal?.currentLevel === 'aal2') {
+        // Il menu si carica solo dopo la 2FA: appena passata, le pagine scoperte si accendono.
+        void loadDiscovery();
         const me = await loadAccount();
         setStep(me.onboarded ? { kind: 'ready' } : { kind: 'onboarding' });
         return;

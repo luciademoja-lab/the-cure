@@ -18,12 +18,13 @@ export function splitElayra(content: string): ElayraPart[] {
     .map((piece) => {
       const pages: string[] = [];
       const text = piece
-        .replace(/\[\[pagina:([a-z-]+)\]\]/g, (_m, key: string) => {
-          if (pageByKey(key) && !pages.includes(key)) pages.push(key);
+        .replace(/\[\[\s*(?:pagina|page)\s*:\s*([^\]]+?)\s*\]\]/gi, (_m, key: string) => {
+          const page = pageByKey(key);
+          if (page && !pages.includes(page.key)) pages.push(page.key);
           return '';
         })
         // Un marcatore ancora a metà mentre arriva il testo non si mostra.
-        .replace(/\[\[[a-z:-]*$/, '')
+        .replace(/\[\[[^\]]*\]?$/, '')
         .replace(/\n{3,}/g, '\n\n')
         .trim();
       return { text, pages };

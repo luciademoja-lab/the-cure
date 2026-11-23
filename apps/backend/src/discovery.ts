@@ -63,7 +63,7 @@ export function discoveryContext(facts: DiscoveryFacts): string {
   const visible = visiblePages(facts);
   const hidden = PAGE_KEYS.filter((k) => !visible.includes(k));
   const lines: string[] = [];
-  lines.push(`Pagine che la persona ha già scoperto: ${visible.map((k) => LABEL[k]).join(', ')}.`);
+  lines.push(`Pagine che la persona ha già scoperto: ${visible.map((k) => `${LABEL[k]} [${k}]`).join(', ')}.`);
   if (hidden.length === 0) {
     lines.push('Ha già scoperto tutte le pagine: non serve proporne altre, a meno che non te lo chieda.');
   } else {
@@ -111,7 +111,7 @@ export const pageMark = (k: PageKey) => `[[pagina:${k}]]`;
 /** Toglie i marcatori, per i riassunti e per ciò che non è la chat (diario, Forgia). */
 export function stripMarks(text: string): string {
   return text
-    .replace(/\[\[pagina:[a-z-]+\]\]/g, '')
+    .replace(/\[\[\s*(?:pagina|page)\s*:[^\]]*\]\]/gi, '')
     .replace(/\[\[pausa\]\]/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
