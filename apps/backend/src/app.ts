@@ -19,6 +19,7 @@ import {
   MONTH_REPORT_DAYS,
   PAGE_KEYS,
   visiblePages,
+  canOpen,
 } from './discovery';
 import { forgeInvitation, FORGE_AREAS, sanitizeDraft, shouldCheckForge } from './forge';
 
@@ -205,12 +206,13 @@ export function createApp() {
   // ── Scoperta dell'app: il menu si accende pagina per pagina ─────────────
 
   const loadDiscovery = async (user: AuthedUser): Promise<DiscoveryFacts> => {
-    const [profile, entries, tarot, days, rituals] = await Promise.all([
+    const [profile, entries, tarot, days, rituals, forge] = await Promise.all([
       db<{ discovered_pages: string[] | null }[]>(user, 'profiles?select=discovered_pages'),
       db(user, 'journal_entries?select=id&limit=1', { prefer: 'count=exact' }),
       db<{ id: string }[]>(user, 'tarot_readings?select=id&reading=neq.&limit=1'),
       db<{ day: string }[]>(user, 'rpc/my_active_days', { method: 'POST', body: {} }),
       db(user, 'rituals?select=id&limit=1', { prefer: 'count=exact' }),
+      db<{ user_id: string }[]>(user, 'forge_profiles?select=user_id&limit=1'),
     ]);
     return {
       rituals: rituals.count ?? 0,
@@ -218,6 +220,7 @@ export function createApp() {
       journalEntries: entries.count ?? 0,
       hasTarotReading: Boolean(tarot.data?.length),
       activeDays: days.data?.length ?? 0,
+      forgeReady: Boolean(forge.data?.length),
     };
   };
 
@@ -237,6 +240,12 @@ export function createApp() {
     route(async (req, res) => {
       const page = req.body?.page;
       if (!isPageKey(page)) throw new HttpError(400, 'Pagina non valida');
+      // Sincronicità e Forgia entrano nel menu solo quando sono pronte, anche se la persona ci arriva da un link.
+      const before = await loadDiscovery(req.user);
+      if (!canOpen(page, before)) {
+        res.json({ pages: PAGE_KEYS, visible: visiblePages(before) });
+        return;
+      }
       const { data } = await db<{ discovered_pages: string[] | null }[]>(req.user, 'profiles?select=discovered_pages');
       const current = cleanDiscovered(data?.[0]?.discovered_pages);
       if (!current.includes(page)) {

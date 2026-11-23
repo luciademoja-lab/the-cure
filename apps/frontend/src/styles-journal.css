@@ -1109,3 +1109,40 @@
     max-width: 92%;
   }
 }
+
+/* Il pulsante per inviare sta dentro la finestra di scrittura, piccolo, solo l'icona. */
+.chat-compose {
+  position: relative;
+}
+.chat-compose .journal-textarea {
+  width: 100%;
+  padding-right: 3.4rem;
+}
+.chat-send {
+  position: absolute;
+  right: 0.6rem;
+  bottom: 0.7rem;
+  width: 2.2rem;
+  height: 2.2rem;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--gold-light, #ecd49a), var(--gold, #cfa54a));
+  color: #1b150c;
+  cursor: pointer;
+  box-shadow: 0 0 12px rgba(207, 165, 74, 0.35);
+  transition: opacity 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+}
+.chat-send:hover:not(:disabled),
+.chat-send:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 0 18px rgba(236, 212, 154, 0.55);
+  outline: none;
+}
+.chat-send:disabled {
+  opacity: 0.35;
+  cursor: default;
+  box-shadow: none;
+}

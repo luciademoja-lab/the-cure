@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { TextArea } from '../atoms/TextArea';
-import { Button } from '../atoms/Button';
 import { useTranslation } from '../../i18n/I18nProvider';
 import { apiGet, ChatMessage, streamChat } from '../../lib/api';
 import { DictationButton } from '../atoms/DictationButton';
@@ -240,15 +239,29 @@ export function EntryEditor(_props: EntryEditorProps = {}) {
       </div>
 
       <div className="chat-input">
-        <TextArea
-          value={inputText}
-          onChange={setInputText}
-          placeholder={t('journal.placeholder')}
-          ariaLabel={t('chat.inputLabel')}
-          rows={3}
-          maxLength={4000}
-          onKeyDown={handleKeyDown}
-        />
+        <div className="chat-compose">
+          <TextArea
+            value={inputText}
+            onChange={setInputText}
+            placeholder={t('journal.placeholder')}
+            ariaLabel={t('chat.inputLabel')}
+            rows={3}
+            maxLength={4000}
+            onKeyDown={handleKeyDown}
+          />
+          <button
+            type="button"
+            className="chat-send"
+            aria-label={t('chat.send')}
+            title={t('chat.send')}
+            onClick={() => void handleSendMessage()}
+            disabled={busy || !inputText.trim()}
+          >
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <path d="M12 19V5M5.5 11.5 12 5l6.5 6.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </div>
         <div className="chat-voice-row">
           {!voiceMode && (
             <DictationButton
@@ -271,10 +284,6 @@ export function EntryEditor(_props: EntryEditorProps = {}) {
                       : ''}
             </span>
           )}
-        </div>
-        <div className="chat-actions">
-          <Button label={t('chat.send')} onClick={() => void handleSendMessage()} variant="primary" disabled={busy || !inputText.trim()} />
-
         </div>
         <p className="chat-midnight">{t('chat.midnight')}</p>
         <p className="chat-disclaimer">{t('chat.disclaimer')}</p>
