@@ -20,7 +20,30 @@ export const PAGES = [
 
 export type PageKey = (typeof PAGES)[number]['key'];
 
-export const pageByKey = (key: string) => PAGES.find((p) => p.key === key);
+/** Nomi con cui Elayra a volte scrive una pagina (in italiano o come si legge nel menu). */
+const ALIASES: Record<string, PageKey> = {
+  elayra: 'journal',
+  chat: 'journal',
+  diario: 'diary',
+  luce: 'daily-light',
+  'daily-light': 'daily-light',
+  dailylight: 'daily-light',
+  percorso: 'path',
+  'il-percorso': 'path',
+  gaming: 'path',
+  tarocchi: 'tarot',
+  sincronicita: 'synchronicities',
+  'sincronicità': 'synchronicities',
+  forgia: 'forge',
+  'la-forgia': 'forge',
+  collettivo: 'collective',
+  piani: 'plans',
+};
+
+export const pageByKey = (key: string) => {
+  const k = key.trim().toLowerCase().replace(/\s+/g, '-');
+  return PAGES.find((p) => p.key === k) ?? PAGES.find((p) => p.key === ALIASES[k]);
+};
 export const pageByPath = (path: string) => PAGES.find((p) => p.path === path);
 
 type State = { visible: PageKey[] | null };
