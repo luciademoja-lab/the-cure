@@ -77,10 +77,31 @@ import { nextGuideStep } from '../discovery';
 
 describe('primi passi della guida', () => {
   const base = { discovered: ['journal' as const], hasTarotReading: false, activeDays: 1, journalEntries: 0 };
-  it('segue l’ordine: Daily Light, poi Termina e salva, poi i Tarocchi comparsi', () => {
+  it('segue l’ordine: Daily Light, poi la pagina di mezzanotte, poi i Tarocchi comparsi', () => {
     expect(nextGuideStep(base)).toContain('Daily Light');
-    expect(nextGuideStep({ ...base, discovered: ['journal', 'daily-light'] })).toContain('Termina e salva');
+    expect(nextGuideStep({ ...base, discovered: ['journal', 'daily-light'] })).toContain('mezzanotte');
     expect(nextGuideStep({ ...base, discovered: ['journal', 'daily-light'], journalEntries: 1, hasTarotReading: true })).toContain('Tarocchi');
     expect(nextGuideStep({ ...base, discovered: ['journal', 'daily-light'], journalEntries: 4 })).toContain('nessuno');
+  });
+});
+
+import { localDay, pagePoints, pastDays } from '../diary';
+
+describe('giorni del diario', () => {
+  it('conta il giorno nel fuso della persona', () => {
+    // 23:30 a Roma è già il giorno dopo in UTC+2... e ancora lo stesso giorno a Roma.
+    expect(localDay('2026-11-23T22:30:00Z', 'Europe/Rome')).toBe('2026-11-23');
+    expect(localDay('2026-11-23T23:30:00Z', 'Europe/Rome')).toBe('2026-11-24');
+  });
+  it('tiene solo i giorni finiti, dal più vecchio', () => {
+    const now = new Date('2026-11-24T10:00:00Z');
+    const m = (id: string, at: string) => ({ id, role: 'user' as const, content: id, created_at: at });
+    const days = pastDays([m('a', '2026-11-22T10:00:00Z'), m('b', '2026-11-23T10:00:00Z'), m('c', '2026-11-24T09:00:00Z')], 'Europe/Rome', now);
+    expect(days.map((d) => d.day)).toEqual(['2026-11-22', '2026-11-23']);
+  });
+  it('punti luce secondo quanto si scrive', () => {
+    expect(pagePoints('x'.repeat(10))).toBe(5);
+    expect(pagePoints('x'.repeat(300))).toBe(8);
+    expect(pagePoints('x'.repeat(600))).toBe(13);
   });
 });

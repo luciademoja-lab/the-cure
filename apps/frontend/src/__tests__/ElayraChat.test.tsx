@@ -94,17 +94,12 @@ describe('Chat con Elayra', () => {
     expect(await screen.findByText('Per oggi ci siamo dette tanto. Torniamo a parlarci domani.')).toBeInTheDocument();
   });
 
-  it('“Finish and save” è attivo solo dopo che l’utente ha scritto, e chiama onFinish', async () => {
-    const user = userEvent.setup();
-    const onFinish = vi.fn().mockResolvedValue({});
+  it('non c’è più “Finish and save”: a mezzanotte la conversazione diventa una pagina del Diario', async () => {
     fetchMock.mockResolvedValueOnce(json({ messages: [{ id: '1', role: 'user', content: 'oggi bene' }] }));
-    renderChat(onFinish);
+    renderChat();
     await screen.findByText('oggi bene');
-    const finish = screen.getByRole('button', { name: 'Finish and save' });
-    await waitFor(() => expect(finish).toBeEnabled());
-    await user.click(finish);
-    expect(onFinish).toHaveBeenCalledTimes(1);
-    expect(await screen.findByText(/Saved in your journal/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Finish and save' })).not.toBeInTheDocument();
+    expect(screen.getByText(/At midnight this conversation becomes a page of your Diary/)).toBeInTheDocument();
   });
 });
 
@@ -130,6 +125,39 @@ describe('Elayra in più messaggi', () => {
     expect(screen.getByText('Caspita.')).toBeInTheDocument();
     expect(screen.getByText('Prova qui.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Go to Daily Light' })).toBeInTheDocument();
+  });
+});
+
+import { DiaryPage } from '../pages/DiaryPage';
+import { AuthProvider } from '../contexts/AuthContext';
+
+describe('Diario', () => {
+  it('mostra la pagina più recente con le parole della persona e ciò che è emerso', async () => {
+    fakeSupabase.signInAs();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        json({
+          entries: [
+            { id: 'b', day: '2026-11-22', userWords: ['ho litigato con mia sorella'], content: 'È emerso il bisogno di essere capita.', mood: 5, energy: 'low', lightPointsEarned: 5, timestamp: '2026-11-22T20:00:00Z' },
+            { id: 'a', day: '2026-11-21', userWords: ['giornata tranquilla'], content: 'Calma.', mood: 7, energy: 'moderate', lightPointsEarned: 5, timestamp: '2026-11-21T20:00:00Z' },
+          ],
+        })
+      )
+    );
+    render(
+      <MemoryRouter>
+        <I18nProvider>
+          <AuthProvider>
+            <DiaryPage />
+          </AuthProvider>
+        </I18nProvider>
+      </MemoryRouter>
+    );
+    expect(await screen.findByText('ho litigato con mia sorella')).toBeInTheDocument();
+    expect(screen.getByText('È emerso il bisogno di essere capita.')).toBeInTheDocument();
+    expect(screen.getByText('2 / 2')).toBeInTheDocument();
+    vi.unstubAllGlobals();
   });
 });
 

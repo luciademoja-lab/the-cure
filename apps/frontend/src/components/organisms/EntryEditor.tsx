@@ -15,7 +15,8 @@ const SEND_AFTER_PAUSE_MS = 1800;
 
 type EntryEditorProps = {
   /** Chiude la conversazione e la salva come pagina di diario. */
-  onFinish: () => Promise<unknown>;
+  /** Non serve più: a mezzanotte la conversazione del giorno diventa da sola una pagina del Diario. */
+  onFinish?: () => Promise<unknown>;
 };
 
 type Bubble = ChatMessage & { local?: boolean; kind?: 'error' | 'note' | 'greeting'; live?: boolean };
@@ -24,7 +25,7 @@ type Bubble = ChatMessage & { local?: boolean; kind?: 'error' | 'note' | 'greeti
  * La finestra di chat con Elayra. I messaggi passano dal backend, che li manda a Claude
  * con la voce di Elayra e li conserva: riaprendo l'app la conversazione è ancora lì.
  */
-export function EntryEditor({ onFinish }: EntryEditorProps) {
+export function EntryEditor(_props: EntryEditorProps = {}) {
   const { t, locale } = useTranslation();
   const discovered = useDiscovery();
   const { account } = useAccount();
@@ -197,23 +198,6 @@ export function EntryEditor({ onFinish }: EntryEditorProps) {
   };
   sendRef.current = handleSendMessage;
 
-  const handleFinishAndSave = async () => {
-    if (!hasUserMessages || busy) return;
-    setIsSaving(true);
-    try {
-      await onFinish();
-      setMessages((prev) => [
-        ...prev.filter((m) => m.kind !== 'error'),
-        { role: 'assistant', content: t('chat.saved'), local: true, kind: 'note' },
-      ]);
-    } catch (e) {
-      const message = e instanceof Error ? e.message : t('chat.error.generic');
-      setMessages((prev) => [...prev, { role: 'assistant', content: message, local: true, kind: 'error' }]);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
       event.preventDefault();
@@ -290,13 +274,9 @@ export function EntryEditor({ onFinish }: EntryEditorProps) {
         </div>
         <div className="chat-actions">
           <Button label={t('chat.send')} onClick={() => void handleSendMessage()} variant="primary" disabled={busy || !inputText.trim()} />
-          <Button
-            label={isSaving ? t('chat.saving') : t('chat.finish')}
-            onClick={handleFinishAndSave}
-            variant="secondary"
-            disabled={busy || !hasUserMessages}
-          />
+
         </div>
+        <p className="chat-midnight">{t('chat.midnight')}</p>
         <p className="chat-disclaimer">{t('chat.disclaimer')}</p>
       </div>
     </div>

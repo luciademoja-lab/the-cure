@@ -99,7 +99,10 @@ const fetchMock = vi.fn(async (input: any, init: any = {}) => {
       return json([row], { status: 201 });
     }
     if (method === 'PATCH') {
-      messages.forEach((m) => (m.journaled = true));
+      const inIds = (url.searchParams.get('id') || '').match(/^in\.\((.*)\)$/)?.[1]?.split(',');
+      messages.forEach((m) => {
+        if (!inIds || inIds.includes(m.id)) m.journaled = true;
+      });
       return json(null, { status: 204 });
     }
     if (method === 'DELETE') {
@@ -758,7 +761,7 @@ describe('scoperta dell’app', () => {
     profileRow = { ...profileRow, discovered_pages: ['journal'] };
     const first = await request(app).get('/api/discovery').set(authed);
     expect(first.body.visible).toEqual(['journal']);
-    expect(first.body.pages).toHaveLength(8);
+    expect(first.body.pages).toHaveLength(9);
     const res = await request(app).post('/api/discovery').set(authed).send({ page: 'daily-light' });
     expect(res.status).toBe(200);
     expect(adminCalls.some((c: Row) => String(c.url || c.path || c).includes('profiles'))).toBe(true);
@@ -772,5 +775,25 @@ describe('scoperta dell’app', () => {
     expect(text).toContain('Pagine che non ha ancora scoperto');
     expect(text).toContain('[daily-light]');
     expect(text).toContain('[[pausa]]');
+  });
+});
+
+describe('il diario si scrive da solo', () => {
+  it('a mezzanotte la conversazione del giorno diventa una pagina; la chat riparte vuota', async () => {
+    const yesterday = new Date(Date.now() - 26 * 3600 * 1000).toISOString();
+    messages.push(
+      { id: 'y1', role: 'assistant', content: 'Ciao, sono Elayra.', journaled: false, created_at: yesterday },
+      { id: 'y2', role: 'user', content: 'oggi ho litigato con mia sorella', journaled: false, created_at: yesterday },
+      { id: 't1', role: 'user', content: 'buongiorno', journaled: false, created_at: new Date().toISOString() }
+    );
+    const res = await request(app).get('/api/chat/history').set(authed).set('X-Timezone', 'Europe/Rome');
+    expect(res.status).toBe(200);
+    expect(res.body.messages.map((m: Row) => m.id)).toEqual(['t1']);
+    expect(entries).toHaveLength(1);
+    expect(entries[0].user_words).toEqual(['oggi ho litigato con mia sorella']);
+    expect(entries[0].light_points).toBe(5);
+    expect(entries[0].day).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(messages.find((m) => m.id === 'y2')!.journaled).toBe(true);
+    expect(messages.find((m) => m.id === 't1')!.journaled).toBe(false);
   });
 });

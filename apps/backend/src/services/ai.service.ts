@@ -173,7 +173,7 @@ export const aiService = {
       model: config.lightModel,
       max_tokens: 2000,
       system:
-        `Estrai una pagina di diario da una conversazione. Basati solo su ciò che l'utente ha scritto, senza interpretare né aggiungere. Scrivi ${lang()}.`,
+        `Sei Elayra. Dalla conversazione di una giornata ricavi la pagina di diario di quel giorno: umore ed energia dell'utente, e in poche frasi ciò che è emerso. Basati solo su ciò che l'utente ha detto, senza diagnosi né giudizi. Scrivi ${lang()}.`,
       tools: [
         {
           name: 'salva_pagina',
@@ -184,7 +184,11 @@ export const aiService = {
               mood: { type: 'integer', minimum: 1, maximum: 10, description: "Umore dell'utente da 1 (molto basso) a 10 (ottimo)" },
               energy: { type: 'string', enum: ['low', 'moderate', 'high'] },
               sensation: { type: 'string', description: 'Sensazione fisica o focus corporeo, massimo 5 parole' },
-              contentSummary: { type: 'string', description: "Un paragrafo in prima persona con le parole dell'utente (es. \"Oggi mi sento...\")" },
+              contentSummary: {
+                type: 'string',
+                description:
+                  "Cosa è emerso oggi, scritto da Elayra rivolgendosi all'utente (es. \"Oggi è venuto fuori...\"): 2-4 frasi su temi, emozioni o un'intuizione nati dalla conversazione. Tono caldo, niente elenchi.",
+              },
             },
             required: ['mood', 'energy', 'sensation', 'contentSummary'],
           },

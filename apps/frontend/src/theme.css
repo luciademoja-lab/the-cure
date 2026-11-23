@@ -3052,6 +3052,164 @@ html.is-home body {
   }
 }
 
+/* ── Il Diario: un quaderno scritto a penna che si sfoglia ─────────── */
+.chat-midnight {
+  margin: 0.6rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.diary-empty {
+  max-width: 34rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.diary-book {
+  --ink: #26304d;
+  --ink-elayra: #7a4a1c;
+  --line: 2.1rem;
+  position: relative;
+  max-width: 40rem;
+  margin: 1.5rem auto 0;
+  perspective: 1800px;
+}
+
+.diary-sheet {
+  position: relative;
+  min-height: 34rem;
+  padding: 2.4rem 2rem 1.6rem 3.6rem;
+  border-radius: 4px 14px 14px 4px;
+  color: var(--ink);
+  font-family: 'Caveat', 'Segoe Print', 'Bradley Hand', cursive;
+  font-size: 1.45rem;
+  line-height: var(--line);
+  /* Carta un po' ingiallita, righe azzurre e il margine rosso, come un quaderno vero. */
+  background:
+    linear-gradient(90deg, transparent 2.6rem, rgba(196, 72, 72, 0.45) 2.6rem, rgba(196, 72, 72, 0.45) calc(2.6rem + 1px), transparent calc(2.6rem + 1px)),
+    repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--line) - 1px), rgba(86, 130, 186, 0.28) calc(var(--line) - 1px), rgba(86, 130, 186, 0.28) var(--line)),
+    radial-gradient(ellipse at 30% 20%, #fbf5e6 0%, #f3e8cf 60%, #e9dbbb 100%);
+  background-position: 0 0, 0 2.4rem, 0 0;
+  box-shadow:
+    inset 14px 0 18px -12px rgba(60, 40, 10, 0.45),
+    0 1px 0 rgba(255, 255, 255, 0.4) inset,
+    0 18px 40px rgba(0, 0, 0, 0.55),
+    0 2px 0 #d9c9a3,
+    0 4px 0 #cdbb92;
+  transform-origin: left center;
+  backface-visibility: hidden;
+}
+
+.diary-date {
+  text-align: right;
+  font-size: 1.5rem;
+  margin-bottom: var(--line);
+  line-height: var(--line);
+  height: var(--line);
+}
+
+.diary-words p,
+.diary-emerged p {
+  margin: 0 0 var(--line);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.diary-emerged {
+  color: var(--ink-elayra);
+}
+.diary-emerged h2 {
+  margin: 0;
+  height: var(--line);
+  line-height: var(--line);
+  font-family: 'Caveat', cursive;
+  font-size: 1.55rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+.diary-sign {
+  text-align: right;
+}
+
+.diary-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.4rem;
+  font-size: 1.15rem;
+  opacity: 0.75;
+}
+
+.diary-nav {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1.4rem;
+  margin-top: 1.4rem;
+  color: var(--gold-light);
+  font-family: var(--font-heading);
+}
+.diary-nav button {
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 50%;
+  border: 1px solid rgba(207, 165, 74, 0.5);
+  background: transparent;
+  color: var(--gold-light);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.diary-nav button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* Girare pagina: si piega sul dorso a sinistra e dall'altra parte c'è il giorno nuovo. */
+.diary-sheet.turn-next.phase-out {
+  animation: diary-turn-out 380ms ease-in forwards;
+}
+.diary-sheet.turn-next.phase-in {
+  animation: diary-turn-in 380ms ease-out forwards;
+}
+.diary-sheet.turn-prev.phase-out {
+  animation: diary-turn-back-out 380ms ease-in forwards;
+}
+.diary-sheet.turn-prev.phase-in {
+  animation: diary-turn-back-in 380ms ease-out forwards;
+}
+@keyframes diary-turn-out {
+  from { transform: rotateY(0deg); filter: brightness(1); }
+  to { transform: rotateY(-90deg); filter: brightness(0.7); }
+}
+@keyframes diary-turn-in {
+  from { transform: rotateY(90deg); filter: brightness(0.7); }
+  to { transform: rotateY(0deg); filter: brightness(1); }
+}
+@keyframes diary-turn-back-out {
+  from { transform: rotateY(0deg); }
+  to { transform: rotateY(90deg); }
+}
+@keyframes diary-turn-back-in {
+  from { transform: rotateY(-90deg); }
+  to { transform: rotateY(0deg); }
+}
+
+@media (max-width: 600px) {
+  .diary-sheet {
+    padding: 1.8rem 1.1rem 1.2rem 2.6rem;
+    font-size: 1.3rem;
+    min-height: 26rem;
+    background-position: 0 0, 0 1.8rem, 0 0;
+  }
+  .diary-sheet {
+    background:
+      linear-gradient(90deg, transparent 1.8rem, rgba(196, 72, 72, 0.45) 1.8rem, rgba(196, 72, 72, 0.45) calc(1.8rem + 1px), transparent calc(1.8rem + 1px)),
+      repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--line) - 1px), rgba(86, 130, 186, 0.28) calc(var(--line) - 1px), rgba(86, 130, 186, 0.28) var(--line)),
+      radial-gradient(ellipse at 30% 20%, #fbf5e6 0%, #f3e8cf 60%, #e9dbbb 100%);
+    background-position: 0 0, 0 1.8rem, 0 0;
 /* ── Voce: inviti all'upgrade ───────────────────────────── */
 .voice-upgrade {
   display: inline-flex;
