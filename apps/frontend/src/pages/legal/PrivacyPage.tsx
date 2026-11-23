@@ -23,7 +23,7 @@ function PrivacyPageIt() {
 
       <h2>2. Quali dati trattiamo</h2>
       <ul>
-        <li><strong>Account</strong>: email e nome del tuo account Google (l’accesso avviene solo con Google), nome che scegli, immagine del profilo, conferma di maggiore età, codice di invito, impostazioni della verifica in due passaggi.</li>
+        <li><strong>Account</strong>: la tua email (e, se entri con Google, il nome del tuo account Google), la password cifrata se ti iscrivi con email, nome che scegli, immagine del profilo, conferma di maggiore età, codice di invito, impostazioni della verifica in due passaggi.</li>
         <li><strong>Contenuti che scrivi o detti</strong>: conversazioni con Elayra, pagine di diario, rituali, letture dei tarocchi e report mensili, risposte del Percorso, invito e messaggi della Forgia, documenti caricati nell’archivio dei progetti.</li>
         <li><strong>Dati di utilizzo</strong>: numero di risposte di Elayra usate nel mese, punti luce, livello, stelle e costellazioni del Collettivo.</li>
         <li><strong>Pagamenti</strong>: piano scelto, stato dell’abbonamento e identificativo cliente. I dati della carta li tratta solo Stripe: noi non li vediamo.</li>
@@ -49,7 +49,7 @@ function PrivacyPageIt() {
         <li><strong>Vercel</strong>: ospita il sito e il server di Elayra (funzioni a Parigi, rete di distribuzione globale).</li>
         <li><strong>Anthropic</strong>: elabora il testo per generare le risposte di Elayra. Può avvenire negli Stati Uniti, con le garanzie previste dal GDPR (clausole contrattuali standard). Secondo i suoi termini commerciali non usa questi contenuti per addestrare i modelli.</li>
         <li><strong>Stripe</strong>: pagamenti e fatturazione.</li>
-        <li><strong>Google</strong>: per l’accesso al tuo account; inoltre, se usi la dettatura vocale in Chrome, l’audio è trascritto dal servizio di riconoscimento vocale del browser.</li>
+        <li><strong>Google</strong>: per l’accesso, se scegli di entrare con Google; inoltre, se usi la dettatura vocale in Chrome, l’audio è trascritto dal servizio di riconoscimento vocale del browser.</li>
         <li><strong>Secretary Liria</strong>: riceve soltanto il brief di progetto che tu leggi, confermi e scegli di inviarle dalla Forgia.</li>
         <li><strong>L’altra persona della Forgia</strong>: vede solo il testo del tuo invito (che approvi prima) e ciò che scrivi o carichi nella vostra stanza.</li>
       </ul>
@@ -101,7 +101,7 @@ function PrivacyPageEn() {
 
       <h2>2. What data we process</h2>
       <ul>
-        <li><strong>Account</strong>: the email and name of your Google account (sign-in is with Google only), the name you choose, profile picture, confirmation that you are an adult, invitation code, two-step verification settings.</li>
+        <li><strong>Account</strong>: your email (and, if you sign in with Google, your Google account name), your encrypted password if you sign up with email, the name you choose, profile picture, confirmation that you are an adult, invitation code, two-step verification settings.</li>
         <li><strong>Content you write or dictate</strong>: conversations with Elayra, journal pages, rituals, tarot readings and monthly reports, answers in the Path, Forge invitation and messages, documents uploaded to the project archive.</li>
         <li><strong>Usage data</strong>: number of Elayra replies used in the month, light points, level, stars and constellations of the Collective.</li>
         <li><strong>Payments</strong>: chosen plan, subscription status and customer identifier. Card details are handled only by Stripe: we never see them.</li>
@@ -127,7 +127,7 @@ function PrivacyPageEn() {
         <li><strong>Vercel</strong>: hosts the website and Elayra’s server (functions in Paris, global delivery network).</li>
         <li><strong>Anthropic</strong>: processes text to generate Elayra’s replies. This may happen in the United States, with the safeguards required by the GDPR (standard contractual clauses). Under its commercial terms it does not use this content to train models.</li>
         <li><strong>Stripe</strong>: payments and invoicing.</li>
-        <li><strong>Google</strong>: to sign you in; also, if you use voice dictation in Chrome, the audio is transcribed by the browser’s speech recognition service.</li>
+        <li><strong>Google</strong>: to sign you in, if you choose Google; also, if you use voice dictation in Chrome, the audio is transcribed by the browser’s speech recognition service.</li>
         <li><strong>Secretary Liria</strong>: receives only the project brief that you read, confirm and choose to send her from the Forge.</li>
         <li><strong>The other person in the Forge</strong>: sees only the text of your invitation (which you approve first) and what you write or upload in your shared room.</li>
       </ul>

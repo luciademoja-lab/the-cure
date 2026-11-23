@@ -25,9 +25,10 @@ export interface LoginCredentials {
 export interface RegisterData {
   email: string;
   password: string;
-  nickname: string;
+  /** Nome ed età si chiedono al primo accesso (come con Google): qui sono facoltativi. */
+  nickname?: string;
   /** Serve solo a verificare la maggiore età: non viene salvata. */
-  age: number;
+  age?: number;
   gender?: 'male' | 'female' | 'other' | 'prefer-not-to-say';
   /** Codice di chi ha invitato questa persona (dal link ?ref=...). */
   referralCode?: string;

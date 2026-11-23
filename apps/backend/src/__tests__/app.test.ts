@@ -75,6 +75,7 @@ let currentPlan = 'free';
 let usage: Row[] = [];
 let profileRow: Row = { nickname: 'Lumira', referral_code: 'abc12345', onboarded_at: '2026-11-01T00:00:00Z' };
 let adminCalls: { path: string; method: string; body: unknown }[] = [];
+let costToday = 0;
 let myMatches: Row[] = [];
 let adminMatches: Row[] = [];
 let forgeMessages: Row[] = [];
@@ -163,6 +164,7 @@ const fetchMock = vi.fn(async (input: any, init: any = {}) => {
   // Chiamate con la chiave segreta del server
   if (init.headers?.apikey === 'sb_secret_test') {
     adminCalls.push({ path: url.pathname + url.search, method, body: init.body ? JSON.parse(init.body) : null });
+    if (url.pathname === '/rest/v1/rpc/ai_cost_today') return json(costToday);
     if (url.pathname === '/rest/v1/forge_matches') return json(adminMatches);
     if (url.pathname === '/rest/v1/subscriptions') return json([]);
     if (url.pathname === '/rest/v1/tarot_readings' && method === 'POST') {
@@ -251,6 +253,7 @@ beforeEach(() => {
   usage = [];
   profileRow = { nickname: 'Lumira', referral_code: 'abc12345', onboarded_at: '2026-11-01T00:00:00Z' };
   adminCalls = [];
+  costToday = 0;
   myMatches = [];
   adminMatches = [];
   forgeMessages = [];
@@ -753,6 +756,21 @@ describe('tarocchi e report mensile', () => {
   it('rifiuta periodi che non esistono', async () => {
     expect((await request(app).post('/api/reports/generate').set(authed).send({ month: '2999-01' })).status).toBe(404);
     expect((await request(app).post('/api/reports/generate').set(authed).send({ month: 'novembre' })).status).toBe(404);
+  });
+});
+
+describe('tetto di spesa del piano gratuito', () => {
+  it('oltre il tetto del giorno il piano gratuito si ferma con un messaggio gentile', async () => {
+    costToday = 999;
+    const res = await request(app).post('/api/chat').set(authed).send({ content: 'ciao' });
+    expect(res.status).toBe(429);
+    expect(res.body.error).toMatch(/Torna domani/);
+  });
+
+  it('sotto il tetto Elayra risponde', async () => {
+    costToday = 0.5;
+    const res = await request(app).post('/api/chat').set(authed).send({ content: 'ciao' });
+    expect(res.status).toBe(200);
   });
 });
 

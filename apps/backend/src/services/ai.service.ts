@@ -4,6 +4,7 @@ import { config } from '../config';
 import { buildElayraSystemPrompt } from '../elayra.prompt';
 import { stripMarks } from '../discovery';
 import { HttpError } from './supabase';
+import { reportUsage } from '../metering';
 import { FORGE_AREAS, FORGE_PROJECT_TYPES, FORGE_STYLES, ForgeDraft, sanitizeDraft } from '../forge';
 
 export type ChatTurn = { role: 'user' | 'assistant'; content: string };
@@ -60,6 +61,13 @@ function tuned<T extends { model: string }>(params: T): T {
   return { ...params, ...thinkingFor(params.model) } as T;
 }
 
+/** Una chiamata non in streaming, che lascia il conto dei token. */
+async function createMetered(params: Anthropic.MessageCreateParamsNonStreaming): Promise<Anthropic.Message> {
+  const message = await anthropic().messages.create(params);
+  reportUsage(message.model || params.model, message.usage);
+  return message;
+}
+
 /** Una risposta è utilizzabile se ha testo e non è stata interrotta (filtro di sicurezza o limite di lunghezza). */
 export function isComplete(text: string, stopReason: string | null | undefined): boolean {
   return text.length > 0 && stopReason !== 'refusal' && stopReason !== 'max_tokens';
@@ -80,6 +88,7 @@ async function streamComplete(
     const stream = anthropic().messages.stream(tuned({ ...params, model }), { signal: opts.signal });
     stream.on('text', (delta) => opts.onDelta(delta));
     const final = await stream.finalMessage();
+    reportUsage(final.model || model, final.usage);
     const text = textOf(final);
     if (isComplete(text, final.stop_reason)) return text;
     console.warn('Incomplete reply', { model, stop_reason: final.stop_reason, chars: text.length });
@@ -169,7 +178,7 @@ export const aiService = {
       .map((t) => `${t.role === 'user' ? 'UTENTE' : 'ELAYRA'}: ${stripMarks(t.content)}`)
       .join('\n')
       .slice(-24000);
-    const message = await anthropic().messages.create(tuned({
+    const message = await createMetered(tuned({
       model: config.lightModel,
       max_tokens: 2000,
       system:
@@ -223,7 +232,7 @@ export const aiService = {
       .join('\n')
       .slice(-16000);
     if (!transcript.trim()) return null;
-    const message = await anthropic().messages.create(tuned({
+    const message = await createMetered(tuned({
       model: config.lightModel,
       max_tokens: 2000,
       system:
@@ -270,7 +279,7 @@ export const aiService = {
       .map((m) => `${m.from}: ${m.content}`)
       .join('\n')
       .slice(-20000);
-    const message = await anthropic().messages.create(tuned({
+    const message = await createMetered(tuned({
       model: config.model,
       max_tokens: 2400,
       system: [
@@ -308,7 +317,7 @@ export const aiService = {
       .map((m) => `${m.from}: ${m.content}`)
       .join('\n')
       .slice(-24000);
-    const message = await anthropic().messages.create(tuned({
+    const message = await createMetered(tuned({
       model: config.model,
       max_tokens: 3000,
       system: [
