@@ -26,6 +26,12 @@ export const config = {
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean),
+  /**
+   * Tetto di sicurezza: quanto possono costare in un giorno (dollari, UTC) le risposte di Elayra
+   * a chi usa il piano gratuito. Superato il tetto, il piano gratuito riprende il giorno dopo; i piani a pagamento mai.
+   * 0 lo spegne.
+   */
+  freeDailyBudgetUsd: Number(process.env.AI_FREE_DAILY_BUDGET_USD ?? 10),
   historyWindow: 30,
   maxMessageChars: 4000,
 };

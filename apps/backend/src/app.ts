@@ -7,6 +7,7 @@ import { activeSubscription, createCheckout, createPortal, createReportCheckout,
 import { isPlanId, PLANS, PlanId, startOfMonthUtc } from './plans';
 import { buildProgress, LEVELS, RITUAL_LIGHT_POINTS } from './levels';
 import { currentLocale, localeMiddleware, translateError } from './locale';
+import { meteringMiddleware, setMeteredUser, setUsageSink } from './metering';
 import { cardsForPrompt, describeCards, drawSpread } from './tarot';
 import { DayMessage, localDay, pagePoints, pastDays, safeTimeZone } from './diary';
 import { availablePeriods, periodEndExclusive, ReportPeriod, resolvePeriod } from './reports';
@@ -119,6 +120,9 @@ export function createApp() {
     })
   );
   app.use(localeMiddleware);
+  app.use(meteringMiddleware);
+  // I conti dei token finiscono nel database, scritti dal server.
+  setUsageSink((row) => adminDb('ai_tokens', { method: 'POST', body: row }));
   // Il webhook di Stripe deve ricevere il corpo così com'è per verificarne la firma: va prima di express.json.
   app.post('/api/stripe/webhook', express.raw({ type: 'application/json', limit: '1mb' }), (req, res, next) => {
     handleWebhook(req.body as Buffer, req.headers['stripe-signature'] as string | undefined)
@@ -147,6 +151,7 @@ export function createApp() {
       // 2FA obbligatoria: senza il codice dell'autenticatore il server non risponde.
       if (user.aal !== 'aal2') throw new HttpError(403, 'Serve il codice dell’app di autenticazione');
       (req as AuthedRequest).user = user;
+      setMeteredUser(user.id);
       next();
     } catch (e) {
       next(e);
@@ -186,6 +191,20 @@ export function createApp() {
       avatarPath: p?.avatar_path || null,
       elayraNotes: p?.elayra_notes || '',
     };
+  };
+
+  /** Il tetto di spesa giornaliero del piano gratuito (vedi config.freeDailyBudgetUsd). */
+  const requireFreeBudget = async (account: Awaited<ReturnType<typeof loadAccount>>) => {
+    if (account.plan.id !== 'free' || !(config.freeDailyBudgetUsd > 0)) return;
+    const { data } = await adminDb<number | string>('rpc/ai_cost_today', { method: 'POST', body: { only_free: true } }).catch(
+      () => ({ data: 0 })
+    );
+    if (Number(data) >= config.freeDailyBudgetUsd) {
+      throw new HttpError(
+        429,
+        'Oggi Elayra ha dato tutte le risposte del piano gratuito. Torna domani, oppure scegli un piano per continuare adesso.'
+      );
+    }
   };
 
   const requireQuota = (account: Awaited<ReturnType<typeof loadAccount>>) => {
@@ -457,6 +476,7 @@ export function createApp() {
 
       const account = await loadAccount(req.user);
       requireQuota(account);
+      await requireFreeBudget(account);
       const model = account.plan.tier === 'full' ? config.model : config.lightModel;
       // Dove si trova la persona nella scoperta dell'app: se manca, Elayra risponde lo stesso.
       const discovery = await loadDiscovery(req.user)

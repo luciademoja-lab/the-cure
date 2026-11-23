@@ -55,6 +55,8 @@ export function ProfilePage() {
   const { account, refresh } = useAccount();
   const [nickname, setNickname] = useState(account?.nickname || '');
   const [notes, setNotes] = useState(account?.elayraNotes || '');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ key: string; ok: boolean; text: string } | null>(null);
 
@@ -120,6 +122,19 @@ export function ProfilePage() {
       if (old && old !== path) await supabase.storage.from('avatars').remove([old]);
       await refresh();
       return t('profile.saved');
+    });
+  };
+
+  const changePassword = (e: FormEvent) => {
+    e.preventDefault();
+    void run('password', async () => {
+      if (password.length < 8) throw new Error(t('profile.passwordShort'));
+      if (password !== confirm) throw new Error(t('profile.passwordMismatch'));
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) throw new Error(error.message);
+      setPassword('');
+      setConfirm('');
+      return t('profile.passwordChanged');
     });
   };
 
@@ -253,6 +268,32 @@ export function ProfilePage() {
         {note('name')}
       </section>
 
+      <section className="card profile-card" aria-labelledby="profile-password">
+        <h2 id="profile-password">{t('profile.password')}</h2>
+        <form onSubmit={changePassword} className="profile-form profile-form--stack">
+          <input
+            type="password"
+            autoComplete="new-password"
+            placeholder={t('profile.newPassword')}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            aria-label={t('profile.newPassword')}
+          />
+          <input
+            type="password"
+            autoComplete="new-password"
+            placeholder={t('profile.confirmPassword')}
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            aria-label={t('profile.confirmPassword')}
+          />
+          <button type="submit" className="cta-button secondary" disabled={busy !== null || !password}>
+            {t('profile.changePassword')}
+          </button>
+        </form>
+        <p className="profile-muted profile-small">{t('profile.passwordHint')}</p>
+        {note('password')}
+      </section>
     </main>
   );
 }

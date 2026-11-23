@@ -28,6 +28,8 @@ const EN: Record<string, string> = {
   'Data non valida': 'Invalid date',
   'Elayra non è ancora collegata: manca ANTHROPIC_API_KEY sul server': 'Elayra is not connected yet: ANTHROPIC_API_KEY is missing on the server',
   'Errore del database': 'Database error',
+  'Oggi Elayra ha dato tutte le risposte del piano gratuito. Torna domani, oppure scegli un piano per continuare adesso.':
+    'Elayra has given all of today’s free-plan replies. Come back tomorrow, or choose a plan to continue now.',
   'Errore interno': 'Something went wrong on our side',
   'Firma Stripe non valida': 'Invalid Stripe signature',
   'Hai già un abbonamento: puoi cambiarlo da “Gestisci abbonamento”.': 'You already have a subscription: you can change it from “Manage subscription”.',

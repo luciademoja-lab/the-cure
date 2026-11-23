@@ -90,7 +90,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const register = async (data: RegisterData): Promise<RegisterResult> => {
     setIsLoading(true);
     try {
-      if (data.age < MIN_AGE) {
+      if (data.age !== undefined && data.age < MIN_AGE) {
         throw new Error(`You must be at least ${MIN_AGE} years old to register`);
       }
       const { data: result, error } = await supabase.auth.signUp({
@@ -98,8 +98,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         password: data.password,
         options: {
           data: {
-            nickname: data.nickname,
-            adult_confirmed: 'true',
+            ...(data.nickname ? { nickname: data.nickname } : {}),
+            ...(data.age !== undefined ? { adult_confirmed: 'true' } : {}),
             ...(data.referralCode ? { referral_code: data.referralCode } : {}),
           },
           emailRedirectTo: `${window.location.origin}/journal`,
