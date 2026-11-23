@@ -8,6 +8,7 @@ import { supabase } from './supabase';
  */
 export const PAGES = [
   { key: 'journal', path: '/journal', label: 'nav.journal' },
+  { key: 'diary', path: '/diario', label: 'nav.diary' },
   { key: 'daily-light', path: '/daily-light', label: 'nav.dailyLight' },
   { key: 'tarot', path: '/tarot', label: 'nav.tarot' },
   { key: 'path', path: '/gaming', label: 'nav.path' },

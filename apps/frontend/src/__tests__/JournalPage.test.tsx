@@ -48,10 +48,10 @@ describe('JournalPage', () => {
     localStorage.setItem('currentUser', JSON.stringify(mockUser));
   });
 
-  it('renders journal page title', () => {
+  it('renders the Elayra page title', () => {
     renderWithProviders(<JournalPage />);
-    
-    expect(screen.getByText(/Journal/i)).toBeInTheDocument();
+
+    expect(screen.getByRole('heading', { name: 'Elayra' })).toBeInTheDocument();
   });
 
   it('renders journal entry editor component', async () => {
@@ -62,26 +62,9 @@ describe('JournalPage', () => {
     });
   });
 
-  it('displays entry list when entries exist', async () => {
-    const mockEntries = [
-      {
-        id: '1',
-        content: 'Today I felt grateful',
-        mood: 8,
-        energy: 'high',
-        timestamp: new Date(),
-        tags: [],
-        aiTags: ['Gratitude']
-      }
-    ];
-    
-    localStorage.setItem('the-cure-journal-entries', JSON.stringify(mockEntries));
-    
+  it('does not list diary pages here: they live in the Diary page', () => {
     renderWithProviders(<JournalPage />);
-    
-    await waitFor(() => {
-      expect(screen.getByText(/Your Journal Entries/i)).toBeInTheDocument();
-    });
+    expect(screen.queryByText(/Your Journal Entries/i)).not.toBeInTheDocument();
   });
 
   it('shows empty state when no entries', () => {

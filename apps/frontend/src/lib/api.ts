@@ -41,7 +41,13 @@ async function authHeaders(): Promise<Record<string, string>> {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
   if (!token) throw new ApiError(401, msg('session'));
-  return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', 'Accept-Language': appLocale() };
+  return {
+    Authorization: `Bearer ${token}`,
+    'Content-Type': 'application/json',
+    'Accept-Language': appLocale(),
+    // Il diario chiude i giorni a mezzanotte nell'ora della persona.
+    'X-Timezone': Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Rome',
+  };
 }
 
 async function request(path: string, init: RequestInit = {}): Promise<Response> {

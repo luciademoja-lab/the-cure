@@ -16,6 +16,9 @@ export interface JournalEntry {
   aiPrompt?: string;
   elayraResponse?: string;
   lightPointsEarned?: number;
+  /** Le pagine scritte da sole: il giorno (AAAA-MM-GG) e le parole della persona. */
+  day?: string | null;
+  userWords?: string[];
 }
 
 export interface CheckInData {

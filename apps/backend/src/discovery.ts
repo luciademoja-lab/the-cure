@@ -3,7 +3,7 @@
  * una alla volta, e ognuna entra nel menu quando la persona la visita.
  */
 
-export const PAGE_KEYS = ['journal', 'daily-light', 'path', 'tarot', 'synchronicities', 'forge', 'collective', 'plans'] as const;
+export const PAGE_KEYS = ['journal', 'diary', 'daily-light', 'path', 'tarot', 'synchronicities', 'forge', 'collective', 'plans'] as const;
 export type PageKey = (typeof PAGE_KEYS)[number];
 
 export const isPageKey = (v: unknown): v is PageKey => typeof v === 'string' && (PAGE_KEYS as readonly string[]).includes(v);
@@ -24,10 +24,16 @@ export type DiscoveryFacts = {
   rituals?: number;
 };
 
-/** Le pagine visibili nel menu: quelle visitate, più i Tarocchi appena arriva la prima lettura. */
-export function visiblePages(facts: Pick<DiscoveryFacts, 'discovered' | 'hasTarotReading'>): PageKey[] {
+/**
+ * Le pagine visibili nel menu: quelle visitate, più due che si aprono da sole:
+ * il Diario con la prima pagina (dopo la mezzanotte della prima chat) e i Tarocchi con la prima lettura.
+ */
+export function visiblePages(
+  facts: Pick<DiscoveryFacts, 'discovered' | 'hasTarotReading'> & { journalEntries?: number }
+): PageKey[] {
   const set = new Set<PageKey>(['journal', ...facts.discovered]);
   if (facts.hasTarotReading) set.add('tarot');
+  if ((facts.journalEntries ?? 0) > 0) set.add('diary');
   return PAGE_KEYS.filter((k) => set.has(k));
 }
 
@@ -38,7 +44,8 @@ export function cleanDiscovered(value: unknown): PageKey[] {
 }
 
 const LABEL: Record<PageKey, string> = {
-  journal: 'Journal (questa conversazione)',
+  journal: 'Elayra (questa conversazione)',
+  diary: 'Diario',
   'daily-light': 'Daily Light',
   path: 'Il Percorso',
   tarot: 'Tarocchi',
@@ -81,6 +88,8 @@ export function discoveryContext(facts: DiscoveryFacts): string {
   }
   if (!visible.includes('collective') && facts.activeDays >= 3) ready.push('collective: quando parla delle persone che ha intorno o di condividere');
   if (!visible.includes('forge')) ready.push('forge: solo se nelle sue parole c’è un progetto da costruire; altrimenti mai');
+  if (!visible.includes('diary'))
+    ready.push('diary: si apre da sola dopo la mezzanotte della prima conversazione; puoi dirlo, senza pulsante');
   if (!visible.includes('tarot')) ready.push('tarot: si apre da sola con la prima lettura, quando completa le due pratiche dello stesso giorno; puoi accennarlo, non serve il pulsante');
   if (!visible.includes('plans')) ready.push('plans: solo se chiede dei piani o finisce le risposte del mese');
   if (ready.length) lines.push(`Quando ha senso proporle:\n- ${ready.join('\n- ')}`);
@@ -90,7 +99,7 @@ export function discoveryContext(facts: DiscoveryFacts): string {
 /** Il prossimo dei "primi passi" per chi arriva (vedi il prompt), o niente se li ha già fatti. */
 export function nextGuideStep(facts: DiscoveryFacts, visible: PageKey[] = visiblePages(facts)): string {
   if (!visible.includes('daily-light')) return '1, presentare la Daily Light (dopo che ha risposto al saluto).';
-  if (facts.journalEntries === 0) return '3, spiegare "Termina e salva" quando torna nel diario.';
+  if (facts.journalEntries === 0) return '3, spiegare che a mezzanotte questa conversazione diventa da sola una pagina del Diario.';
   if (facts.hasTarotReading && facts.journalEntries <= 1) return '2, se non l’hai già detto: la pagina Tarocchi è comparsa nel menu.';
   return 'nessuno, i primi passi sono fatti: continua ad ascoltare.';
 }

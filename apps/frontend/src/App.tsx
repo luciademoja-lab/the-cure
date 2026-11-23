@@ -5,6 +5,7 @@ import { Navbar } from './components/organisms/Navbar';
 import { OrbitNav } from './components/organisms/OrbitNav';
 import { LandingPage } from './pages/LandingPage';
 import { JournalPage } from './pages/JournalPage';
+import { DiaryPage } from './pages/DiaryPage';
 import { DailyLightPracticePage } from './pages/DailyLightPracticePage';
 import { TheForge } from './pages/TheForgePage';
 import { Contatti } from './pages/Contatti';
@@ -35,6 +36,11 @@ function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<Navigate to="/login" replace />} />
           <Route path="/reset-password" element={<Navigate to="/login" replace />} />
+          <Route path="/diario" element={
+            <ProtectedRoute>
+              <DiaryPage />
+            </ProtectedRoute>
+          } />
           <Route path="/journal" element={
             <ProtectedRoute>
               <JournalPage />

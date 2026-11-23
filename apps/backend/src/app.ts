@@ -8,6 +8,7 @@ import { isPlanId, PLANS, PlanId, startOfMonthUtc } from './plans';
 import { buildProgress, LEVELS, RITUAL_LIGHT_POINTS } from './levels';
 import { currentLocale, localeMiddleware, translateError } from './locale';
 import { cardsForPrompt, describeCards, drawSpread } from './tarot';
+import { DayMessage, localDay, pagePoints, pastDays, safeTimeZone } from './diary';
 import { availablePeriods, periodEndExclusive, ReportPeriod, resolvePeriod } from './reports';
 import {
   cleanDiscovered,
@@ -40,6 +41,8 @@ interface EntryRow {
   content: string;
   light_points: number;
   created_at: string;
+  day?: string | null;
+  user_words?: string[] | null;
 }
 
 interface RitualRow {
@@ -88,6 +91,9 @@ const toEntry = (r: EntryRow) => ({
   aiTags: [],
   lightPointsEarned: r.light_points,
   timestamp: r.created_at,
+  // Le pagine scritte da sole: il giorno e le parole della persona, così come le ha scritte.
+  day: r.day || null,
+  userWords: r.user_words || [],
 });
 
 export function calculateLightPoints(contentLength: number): number {
@@ -418,11 +424,17 @@ export function createApp() {
     '/api/chat/history',
     requireAuth,
     route(async (req, res) => {
+      // Ogni giorno la chat riparte: i giorni passati diventano pagine del Diario.
+      const timeZone = timeZoneOf(req);
+      await closePastDays(req.user, timeZone).catch((e) =>
+        console.error('Close days error:', e instanceof Error ? e.message : e)
+      );
       const { data } = await db<MessageRow[]>(
         req.user,
         'chat_messages?select=id,role,content,journaled,created_at&order=created_at.desc&limit=60'
       );
-      res.json({ messages: (data || []).reverse() });
+      const today = localDay(new Date(), timeZone);
+      res.json({ messages: (data || []).filter((m) => localDay(m.created_at, timeZone) === today).reverse() });
     })
   );
 
@@ -512,13 +524,63 @@ export function createApp() {
     })
   );
 
+  // ── Diario: una pagina per giorno, scritta da sola ───────────────────────
+
+  const timeZoneOf = (req: express.Request) => safeTimeZone(req.headers['x-timezone']);
+
+  /**
+   * Chiude i giorni già finiti: la conversazione di ognuno diventa una pagina di diario
+   * con le parole della persona e ciò che è emerso. Al massimo tre giorni per volta.
+   */
+  const closePastDays = async (user: AuthedUser, timeZone: string) => {
+    const { data } = await db<MessageRow[]>(
+      user,
+      'chat_messages?select=id,role,content,journaled,created_at&journaled=eq.false&order=created_at.asc&limit=400'
+    );
+    const days = pastDays((data || []) as DayMessage[], timeZone).slice(0, 3);
+    for (const { day, messages } of days) {
+      const words = messages.filter((m) => m.role === 'user').map((m) => m.content.trim()).filter(Boolean);
+      if (words.length) {
+        let analysis;
+        try {
+          analysis = await aiService.analyzeChatToEntry(messages.map((m) => ({ role: m.role, content: m.content })));
+        } catch (e) {
+          console.error('Diary page error:', e instanceof Error ? e.message : e);
+          analysis = { mood: 5, energy: 'moderate' as const, sensation: '', contentSummary: '' };
+        }
+        await db(user, 'journal_entries?on_conflict=user_id,day', {
+          method: 'POST',
+          body: {
+            day,
+            user_words: words,
+            mood: analysis.mood,
+            energy: analysis.energy,
+            sensation: analysis.sensation,
+            content: analysis.contentSummary,
+            light_points: pagePoints(words.join('\n\n')),
+            created_at: messages[messages.length - 1].created_at,
+          },
+          prefer: 'resolution=ignore-duplicates',
+        });
+      }
+      const ids = messages.map((m) => m.id).join(',');
+      await db(user, `chat_messages?id=in.(${ids})`, { method: 'PATCH', body: { journaled: true } });
+    }
+  };
+
   // ── Journal ────────────────────────────────────────────────────────────
 
   app.get(
     '/api/journal',
     requireAuth,
     route(async (req, res) => {
-      const { data } = await db<EntryRow[]>(req.user, 'journal_entries?select=*&order=created_at.desc&limit=200');
+      await closePastDays(req.user, timeZoneOf(req)).catch((e) =>
+        console.error('Close days error:', e instanceof Error ? e.message : e)
+      );
+      const { data } = await db<EntryRow[]>(
+        req.user,
+        'journal_entries?select=*&order=day.desc.nullslast,created_at.desc&limit=400'
+      );
       res.json({ entries: (data || []).map(toEntry) });
     })
   );
