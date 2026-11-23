@@ -2,6 +2,7 @@ import { ReactNode, useCallback, useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { apiGet, apiPost } from '../../lib/api';
 import { loadDiscovery } from '../../lib/discovery';
+import { setEmailVerified } from '../../lib/secondFactor';
 import { useTranslation } from '../../i18n/I18nProvider';
 import { useAuth, pendingReferral, clearReferral } from '../../contexts/AuthContext';
 import { Account, AccountContext } from '../../contexts/AccountContext';
@@ -10,6 +11,8 @@ type Step =
   | { kind: 'checking' }
   | { kind: 'enroll'; factorId: string; qr: string; secret: string }
   | { kind: 'challenge'; factorId: string }
+  | { kind: 'choose' }
+  | { kind: 'email'; sentTo?: string }
   | { kind: 'onboarding' }
   | { kind: 'ready' }
   | { kind: 'error'; message: string };
@@ -34,25 +37,19 @@ export function SecurityGate({ children }: { children: ReactNode }) {
     return data;
   }, []);
 
-  const check = useCallback(async () => {
+  const enter = useCallback(async () => {
+    const me = await loadAccount();
+    // Il menu si carica solo dopo il secondo passaggio: appena si entra, le pagine scoperte si accendono.
+    if (me.onboarded) void loadDiscovery();
+    setStep(me.onboarded ? { kind: 'ready' } : { kind: 'onboarding' });
+  }, [loadAccount]);
+
+  /** Prepara l'app di autenticazione: un codice QR nuovo da inquadrare. */
+  const startEnroll = useCallback(async () => {
     setError('');
     try {
-      const { data: aal, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-      if (aalError) throw aalError;
-      if (aal?.currentLevel === 'aal2') {
-        const me = await loadAccount();
-        // Il menu si carica solo dopo la 2FA: appena si entra, le pagine scoperte si accendono.
-        if (me.onboarded) void loadDiscovery();
-        setStep(me.onboarded ? { kind: 'ready' } : { kind: 'onboarding' });
-        return;
-      }
       const { data: factors, error: listError } = await supabase.auth.mfa.listFactors();
       if (listError) throw listError;
-      const verified = factors?.totp?.find((f) => f.status === 'verified');
-      if (verified) {
-        setStep({ kind: 'challenge', factorId: verified.id });
-        return;
-      }
       // Toglie eventuali iscrizioni lasciate a metà, poi ne crea una nuova.
       for (const f of factors?.all || []) {
         if (f.status !== 'verified') await supabase.auth.mfa.unenroll({ factorId: f.id });
@@ -66,7 +63,36 @@ export function SecurityGate({ children }: { children: ReactNode }) {
     } catch (e) {
       setStep({ kind: 'error', message: e instanceof Error ? e.message : t('chat.error.generic') });
     }
-  }, [loadAccount, t]);
+  }, [t]);
+
+  const check = useCallback(async () => {
+    setError('');
+    try {
+      const { data: aal, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (aalError) throw aalError;
+      if (aal?.currentLevel === 'aal2') {
+        await enter();
+        return;
+      }
+      const { data: factors, error: listError } = await supabase.auth.mfa.listFactors();
+      if (listError) throw listError;
+      const verified = factors?.totp?.find((f) => f.status === 'verified');
+      if (verified) {
+        setStep({ kind: 'challenge', factorId: verified.id });
+        return;
+      }
+      // Senza app collegata: forse questa sessione è già stata verificata con il codice via email.
+      const status = await apiGet<{ verified: boolean; usedBefore: boolean }>('/api/mfa/email/status').catch(() => null);
+      if (status?.verified) {
+        setEmailVerified(true);
+        await enter();
+        return;
+      }
+      setStep(status?.usedBefore ? { kind: 'email' } : { kind: 'choose' });
+    } catch (e) {
+      setStep({ kind: 'error', message: e instanceof Error ? e.message : t('chat.error.generic') });
+    }
+  }, [enter, t]);
 
   useEffect(() => {
     // Si controlla una volta per persona collegata (la sessione arriva un attimo dopo il primo disegno).
@@ -86,6 +112,38 @@ export function SecurityGate({ children }: { children: ReactNode }) {
       if (verifyError) throw new Error(t('mfa.errors.wrong'));
       setCode('');
       await check();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('mfa.errors.wrong'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const sendEmailCode = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      const { to } = await apiPost<{ to: string }>('/api/mfa/email/send');
+      setStep({ kind: 'email', sentTo: to });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('chat.error.generic'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const verifyEmailCode = async () => {
+    if (!/^\d{6}$/.test(code.trim())) {
+      setError(t('mfa.errors.format'));
+      return;
+    }
+    setBusy(true);
+    setError('');
+    try {
+      await apiPost('/api/mfa/email/verify', { code: code.trim() });
+      setCode('');
+      setEmailVerified(true);
+      await enter();
     } catch (e) {
       setError(e instanceof Error ? e.message : t('mfa.errors.wrong'));
     } finally {
@@ -145,6 +203,80 @@ export function SecurityGate({ children }: { children: ReactNode }) {
             <p className="gate-secret">
               {t('mfa.manual')} <code>{step.secret}</code>
             </p>
+            <button type="button" className="forge-link" onClick={() => setStep({ kind: 'email' })}>
+              {t('mfa.switchToEmail')}
+            </button>
+          </>
+        )}
+
+        {step.kind === 'choose' && (
+          <>
+            <div className="auth-header">
+              <h1>{t('mfa.chooseTitle')}</h1>
+              <p>{t('mfa.chooseLead')}</p>
+            </div>
+            <div className="gate-choices">
+              <button type="button" className="gate-choice is-recommended" onClick={() => void startEnroll()}>
+                <strong>{t('mfa.useApp')}</strong>
+                <span>{t('mfa.useAppHint')}</span>
+              </button>
+              <button type="button" className="gate-choice" onClick={() => setStep({ kind: 'email' })}>
+                <strong>{t('mfa.useEmail')}</strong>
+                <span className="gate-warning">{t('mfa.emailWarning')}</span>
+              </button>
+            </div>
+          </>
+        )}
+
+        {step.kind === 'email' && (
+          <>
+            <div className="auth-header">
+              <h1>{t('mfa.emailTitle')}</h1>
+              <p>{t('mfa.emailLead')}</p>
+              <p className="gate-warning">{t('mfa.emailWarning')}</p>
+            </div>
+            {step.sentTo ? (
+              <form
+                className="auth-form"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void verifyEmailCode();
+                }}
+              >
+                <p className="gate-note" role="status">
+                  {t('mfa.emailSent', { to: step.sentTo })}
+                </p>
+                <div className="form-group">
+                  <label htmlFor="mfa-email-code">{t('mfa.codeLabel')}</label>
+                  <input
+                    id="mfa-email-code"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                    autoFocus
+                  />
+                </div>
+                {error && <div className="error-message submit-error">{error}</div>}
+                <button type="submit" className="auth-button primary" disabled={busy}>
+                  {t('mfa.verify')}
+                </button>
+                <button type="button" className="forge-link" onClick={() => void sendEmailCode()} disabled={busy}>
+                  {t('mfa.emailResend')}
+                </button>
+              </form>
+            ) : (
+              <>
+                {error && <div className="error-message submit-error">{error}</div>}
+                <button type="button" className="auth-button primary" onClick={() => void sendEmailCode()} disabled={busy}>
+                  {t('mfa.emailSend')}
+                </button>
+              </>
+            )}
+            <button type="button" className="forge-link" onClick={() => void startEnroll()}>
+              {t('mfa.switchToApp')}
+            </button>
           </>
         )}
 

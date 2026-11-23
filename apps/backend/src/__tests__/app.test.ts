@@ -6,6 +6,7 @@ vi.hoisted(() => {
   process.env.SUPABASE_URL = 'https://example.supabase.co';
   process.env.SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_test';
   process.env.SUPABASE_SECRET_KEY = 'sb_secret_test';
+  process.env.RESEND_API_KEY = 're_test';
 });
 
 const streamCalls: any[] = [];
@@ -70,6 +71,14 @@ const fakeJwt = (claims: Record<string, unknown>) =>
   `x.${Buffer.from(JSON.stringify(claims)).toString('base64url')}.y`;
 const GOOD = fakeJwt({ sub: 'user-1', aal: 'aal2' });
 const NO_MFA = fakeJwt({ sub: 'user-1', aal: 'aal1' });
+const SID_A = '11111111-1111-4111-8111-111111111111';
+const SID_B = '22222222-2222-4222-8222-222222222222';
+const EMAIL_A = fakeJwt({ sub: 'user-1', aal: 'aal1', session_id: SID_A });
+const EMAIL_B = fakeJwt({ sub: 'user-1', aal: 'aal1', session_id: SID_B });
+let emailCode: Row | null = null;
+let emailSessions: Row[] = [];
+let totp = false;
+const sentMails: Row[] = [];
 
 let currentPlan = 'free';
 let usage: Row[] = [];
@@ -88,8 +97,12 @@ const fetchMock = vi.fn(async (input: any, init: any = {}) => {
   const url = new URL(String(input));
   const auth = init.headers?.Authorization;
   const method = init.method || 'GET';
+  if (url.hostname === 'api.resend.com') {
+    sentMails.push(JSON.parse(init.body));
+    return json({ id: 'mail-1' });
+  }
   if (url.pathname === '/auth/v1/user') {
-    if (auth !== `Bearer ${GOOD}` && auth !== `Bearer ${NO_MFA}`) return json({ msg: 'invalid' }, { status: 401 });
+    if (![GOOD, NO_MFA, EMAIL_A, EMAIL_B].some((t) => auth === `Bearer ${t}`)) return json({ msg: 'invalid' }, { status: 401 });
     return json({ id: 'user-1', email: 'a@b.it', user_metadata: { nickname: 'Lumira' } });
   }
   if (url.pathname === '/rest/v1/chat_messages') {
@@ -165,6 +178,22 @@ const fetchMock = vi.fn(async (input: any, init: any = {}) => {
   if (init.headers?.apikey === 'sb_secret_test') {
     adminCalls.push({ path: url.pathname + url.search, method, body: init.body ? JSON.parse(init.body) : null });
     if (url.pathname === '/rest/v1/rpc/ai_cost_today') return json(costToday);
+    if (url.pathname === '/rest/v1/rpc/has_totp') return json(totp);
+    if (url.pathname === '/rest/v1/mfa_email_codes') {
+      if (method === 'GET') return json(emailCode ? [emailCode] : []);
+      if (method === 'POST') emailCode = JSON.parse(init.body);
+      if (method === 'PATCH' && emailCode) emailCode = { ...emailCode, ...JSON.parse(init.body) };
+      if (method === 'DELETE') emailCode = null;
+      return json(null, { status: 204 });
+    }
+    if (url.pathname === '/rest/v1/mfa_email_sessions') {
+      if (method === 'POST') {
+        emailSessions.push(JSON.parse(init.body));
+        return json(null, { status: 201 });
+      }
+      const sid = url.searchParams.get('session_id')?.replace('eq.', '');
+      return json(emailSessions.filter((r) => !sid || r.session_id === sid));
+    }
     if (url.pathname === '/rest/v1/forge_matches') return json(adminMatches);
     if (url.pathname === '/rest/v1/subscriptions') return json([]);
     if (url.pathname === '/rest/v1/tarot_readings' && method === 'POST') {
@@ -254,6 +283,10 @@ beforeEach(() => {
   profileRow = { nickname: 'Lumira', referral_code: 'abc12345', onboarded_at: '2026-11-01T00:00:00Z' };
   adminCalls = [];
   costToday = 0;
+  emailCode = null;
+  emailSessions = [];
+  totp = false;
+  sentMails.length = 0;
   myMatches = [];
   adminMatches = [];
   forgeMessages = [];
@@ -279,6 +312,36 @@ describe('auth', () => {
     const chat = await request(app).post('/api/chat').set('Authorization', `Bearer ${NO_MFA}`).send({ content: 'ciao' });
     expect(chat.status).toBe(403);
     expect(streamCalls).toHaveLength(0);
+  });
+
+  it('il codice via email sblocca solo la sessione in cui è stato inserito', async () => {
+    const asA = (r: any) => r.set('Authorization', `Bearer ${EMAIL_A}`);
+    expect((await asA(request(app).get('/api/journal'))).status).toBe(403);
+    expect((await asA(request(app).get('/api/mfa/email/status'))).body).toMatchObject({ verified: false, hasTotp: false, usedBefore: false });
+
+    const sent = await asA(request(app).post('/api/mfa/email/send'));
+    expect(sent.status).toBe(200);
+    expect(sent.body.to).toBe('a•••@b.it');
+    const code = String(sentMails[0].text).match(/\d{6}/)![0];
+    expect(sentMails[0].to).toEqual(['a@b.it']);
+    // un secondo codice subito dopo no
+    expect((await asA(request(app).post('/api/mfa/email/send'))).status).toBe(429);
+
+    const wrong = code === '000000' ? '111111' : '000000';
+    expect((await asA(request(app).post('/api/mfa/email/verify').send({ code: wrong }))).status).toBe(400);
+    expect(emailCode?.attempts).toBe(1);
+    expect((await asA(request(app).post('/api/mfa/email/verify').send({ code }))).status).toBe(200);
+
+    expect((await asA(request(app).get('/api/journal'))).status).toBe(200);
+    // un'altra sessione dello stesso account resta chiusa
+    expect((await request(app).get('/api/journal').set('Authorization', `Bearer ${EMAIL_B}`)).status).toBe(403);
+  });
+
+  it('con un’app di autenticazione collegata il codice via email non vale', async () => {
+    totp = true;
+    const res = await request(app).post('/api/mfa/email/send').set('Authorization', `Bearer ${EMAIL_B}`);
+    expect(res.status).toBe(409);
+    expect(sentMails).toHaveLength(0);
   });
 
   it('rifiuta un token non valido', async () => {

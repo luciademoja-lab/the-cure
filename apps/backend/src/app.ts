@@ -8,6 +8,8 @@ import { isPlanId, PLANS, PlanId, startOfMonthUtc } from './plans';
 import { buildProgress, LEVELS, RITUAL_LIGHT_POINTS } from './levels';
 import { currentLocale, localeMiddleware, translateError } from './locale';
 import { meteringMiddleware, setMeteredUser, setUsageSink } from './metering';
+import { sendMail } from './services/mail';
+import { canSend, CodeRow, CODE_TTL_MS, codeEmail, hashCode, MAX_ATTEMPTS, newCode, sameHash, SESSION_DAYS } from './emailCode';
 import { cardsForPrompt, describeCards, drawSpread } from './tarot';
 import { DayMessage, localDay, pagePoints, pastDays, safeTimeZone } from './diary';
 import { availablePeriods, periodEndExclusive, ReportPeriod, resolvePeriod } from './reports';
@@ -142,14 +144,55 @@ export function createApp() {
     });
   });
 
+  // ── Secondo passaggio via email ────────────────────────────────────────
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const codeSecret = () => config.supabaseSecretKey || 'elayra-local';
+  /** Sessioni già verificate con il codice via email: si ricontrollano ogni 5 minuti. */
+  const verifiedSessions = new Map<string, number>();
+
+  const hasTotp = async (userId: string) => {
+    const { data } = await adminDb<boolean>('rpc/has_totp', { method: 'POST', body: { uid: userId } });
+    return data === true;
+  };
+
+  const emailVerified = async (user: AuthedUser): Promise<boolean> => {
+    const sid = user.sessionId;
+    if (!sid || !UUID.test(sid)) return false;
+    const cached = verifiedSessions.get(sid);
+    if (cached && cached > Date.now()) return true;
+    const { data } = await adminDb<{ verified_at: string }[]>(
+      `mfa_email_sessions?select=verified_at&session_id=eq.${sid}&user_id=eq.${user.id}`
+    );
+    const at = data?.[0]?.verified_at;
+    if (!at || Date.now() - Date.parse(at) > SESSION_DAYS * 86_400_000) return false;
+    if (await hasTotp(user.id)) return false;
+    verifiedSessions.set(sid, Date.now() + 5 * 60_000);
+    return true;
+  };
+
+  /** Solo l'accesso, senza secondo passaggio: serve alle rotte che lo fanno fare. */
+  const requireSession = async (req: Request, _res: Response, next: NextFunction) => {
+    try {
+      const header = req.headers.authorization || '';
+      const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
+      if (!token) throw new HttpError(401, 'Accesso richiesto');
+      (req as AuthedRequest).user = await getUserFromToken(token);
+      next();
+    } catch (e) {
+      next(e);
+    }
+  };
+
   const requireAuth = async (req: Request, _res: Response, next: NextFunction) => {
     try {
       const header = req.headers.authorization || '';
       const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
       if (!token) throw new HttpError(401, 'Accesso richiesto');
       const user = await getUserFromToken(token);
-      // 2FA obbligatoria: senza il codice dell'autenticatore il server non risponde.
-      if (user.aal !== 'aal2') throw new HttpError(403, 'Serve il codice dell’app di autenticazione');
+      // 2FA obbligatoria: senza il codice dell'autenticatore (o quello via email) il server non risponde.
+      if (user.aal !== 'aal2' && !(await emailVerified(user))) {
+        throw new HttpError(403, 'Serve il codice dell’app di autenticazione');
+      }
       (req as AuthedRequest).user = user;
       setMeteredUser(user.id);
       next();
@@ -161,6 +204,82 @@ export function createApp() {
   const route = (fn: Handler) => (req: Request, res: Response, next: NextFunction) => {
     fn(req as AuthedRequest, res).catch(next);
   };
+
+  app.get(
+    '/api/mfa/email/status',
+    requireSession,
+    route(async (req, res) => {
+      const [totp, verified, used] = await Promise.all([
+        hasTotp(req.user.id),
+        req.user.aal === 'aal2' ? Promise.resolve(true) : emailVerified(req.user),
+        adminDb<{ session_id: string }[]>(`mfa_email_sessions?select=session_id&user_id=eq.${req.user.id}&limit=1`),
+      ]);
+      res.json({ verified, hasTotp: totp, usedBefore: Boolean(used.data?.length) });
+    })
+  );
+
+  app.post(
+    '/api/mfa/email/send',
+    requireSession,
+    route(async (req, res) => {
+      if (await hasTotp(req.user.id)) throw new HttpError(409, 'Hai già collegato un’app di autenticazione: usa il suo codice.');
+      if (!req.user.email) throw new HttpError(400, 'Il tuo account non ha un’email a cui mandare il codice.');
+      const { data } = await adminDb<CodeRow[]>(`mfa_email_codes?select=*&user_id=eq.${req.user.id}`);
+      const now = Date.now();
+      const check = canSend(data?.[0], now);
+      if (!check.ok) {
+        throw new HttpError(
+          429,
+          check.reason === 'gap' ? 'Aspetta un minuto prima di chiedere un nuovo codice.' : 'Hai chiesto troppi codici: riprova tra un’ora.'
+        );
+      }
+      const code = newCode();
+      await adminDb('mfa_email_codes?on_conflict=user_id', {
+        method: 'POST',
+        prefer: 'resolution=merge-duplicates',
+        body: {
+          user_id: req.user.id,
+          code_hash: hashCode(req.user.id, code, codeSecret()),
+          expires_at: new Date(now + CODE_TTL_MS).toISOString(),
+          attempts: 0,
+          sent_at: new Date(now).toISOString(),
+          window_start: check.windowStart,
+          sends_in_window: check.sends,
+        },
+      });
+      const mail = codeEmail(code, currentLocale());
+      await sendMail(req.user.email, mail.subject, mail.text, mail.html);
+      res.json({ sent: true, to: req.user.email.replace(/^(.).*(@.*)$/, '$1•••$2') });
+    })
+  );
+
+  app.post(
+    '/api/mfa/email/verify',
+    requireSession,
+    route(async (req, res) => {
+      const code = typeof req.body?.code === 'string' ? req.body.code.trim() : '';
+      if (!/^\d{6}$/.test(code)) throw new HttpError(400, 'Il codice ha 6 cifre.');
+      const sid = req.user.sessionId;
+      if (!sid || !UUID.test(sid)) throw new HttpError(401, 'Sessione non valida');
+      if (await hasTotp(req.user.id)) throw new HttpError(409, 'Hai già collegato un’app di autenticazione: usa il suo codice.');
+      const { data } = await adminDb<CodeRow[]>(`mfa_email_codes?select=*&user_id=eq.${req.user.id}`);
+      const row = data?.[0];
+      if (!row || Date.parse(row.expires_at) < Date.now()) throw new HttpError(400, 'Codice scaduto: chiedine uno nuovo.');
+      if (row.attempts >= MAX_ATTEMPTS) throw new HttpError(429, 'Troppi tentativi: chiedi un nuovo codice.');
+      if (!sameHash(row.code_hash, hashCode(req.user.id, code, codeSecret()))) {
+        await adminDb(`mfa_email_codes?user_id=eq.${req.user.id}`, { method: 'PATCH', body: { attempts: row.attempts + 1 } });
+        throw new HttpError(400, 'Codice sbagliato.');
+      }
+      await adminDb(`mfa_email_codes?user_id=eq.${req.user.id}`, { method: 'DELETE' });
+      await adminDb('mfa_email_sessions?on_conflict=session_id', {
+        method: 'POST',
+        prefer: 'resolution=merge-duplicates',
+        body: { session_id: sid, user_id: req.user.id, verified_at: new Date().toISOString() },
+      });
+      verifiedSessions.set(sid, Date.now() + 5 * 60_000);
+      res.json({ verified: true });
+    })
+  );
 
   // ── Account: piano, uso del mese, profilo ──────────────────────────────
 

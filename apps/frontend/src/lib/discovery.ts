@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { apiGet, apiPost } from './api';
-import { supabase } from './supabase';
+import { secondFactorDone } from './secondFactor';
 
 /**
  * La scoperta dell'app: nel menu si vedono solo le pagine già visitate.
@@ -54,14 +54,7 @@ const emit = (next: State) => {
   listeners.forEach((l) => l(state));
 };
 
-const isAal2 = async () => {
-  try {
-    const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    return data?.currentLevel === 'aal2';
-  } catch {
-    return false;
-  }
-};
+const isAal2 = secondFactorDone;
 
 /** Carica le pagine scoperte (dopo la 2FA: prima il server non risponde). */
 export async function loadDiscovery(): Promise<void> {

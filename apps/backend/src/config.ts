@@ -16,6 +16,10 @@ export const config = {
   /** Chiave segreta del progetto: serve solo al server (webhook Stripe, messaggi di Elayra nelle stanze). */
   supabaseSecretKey: process.env.SUPABASE_SECRET_KEY || '',
 
+  /** Email transazionali (per ora solo il codice del secondo passaggio). La chiave resta solo sul server. */
+  resendApiKey: process.env.RESEND_API_KEY || '',
+  mailFrom: process.env.MAIL_FROM || 'Elayra <accesso@elayra.app>',
+
   stripeSecretKey: process.env.STRIPE_SECRET_KEY || '',
   // Secretary Liria: dove arrivano i brief e il codice sconto del 5% (Part time in su).
   liriaEmail: process.env.LIRIA_EMAIL || 'Liria@SecretaryLiria.com',

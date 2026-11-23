@@ -6,7 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { LanguageSelector } from '../molecules/LanguageSelector';
 import { SuccessModal } from '../atoms/SuccessModal';
 import { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabase';
+import { secondFactorDone } from '../../lib/secondFactor';
 import { apiGet } from '../../lib/api';
 import type { AvatarKind, PlanId } from '../../contexts/AccountContext';
 import { UserAvatar } from '../atoms/UserAvatar';
@@ -43,8 +43,7 @@ export function Navbar() {
     let alive = true;
     void (async () => {
       try {
-        const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-        if (aal?.currentLevel !== 'aal2') return;
+        if (!(await secondFactorDone())) return;
         const data = await apiGet<{ plan: PlanId; nickname: string; avatarKind: AvatarKind | null; avatarPath: string | null }>(
           '/api/me'
         );
