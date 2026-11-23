@@ -8,6 +8,7 @@ import { appendDictated, useDictation } from '../../hooks/useDictation';
 import { SpeechQueue, speechSupported } from '../../lib/speech';
 import { ElayraBubbles } from '../molecules/ElayraBubbles';
 import { useDiscovery } from '../../lib/discovery';
+import { useAccount } from '../../contexts/AccountContext';
 
 const SEND_AFTER_PAUSE_MS = 1800;
 
@@ -25,6 +26,7 @@ type Bubble = ChatMessage & { local?: boolean; kind?: 'error' | 'note' | 'greeti
 export function EntryEditor({ onFinish }: EntryEditorProps) {
   const { t, locale } = useTranslation();
   const discovered = useDiscovery();
+  const { account } = useAccount();
   const [messages, setMessages] = useState<Bubble[]>([]);
   const [inputText, setInputText] = useState('');
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
@@ -228,7 +230,9 @@ export function EntryEditor({ onFinish }: EntryEditorProps) {
             const content =
               message.kind === 'greeting'
                 ? discovered && discovered.length === 1
-                  ? t('chat.greetingGuide')
+                  ? account?.nickname
+                    ? t('chat.greetingGuide', { name: account.nickname })
+                    : t('chat.greetingGuideNoName')
                   : t('chat.greeting')
                 : message.content;
             return <ElayraBubbles key={key} content={content} live={message.live} />;

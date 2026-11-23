@@ -199,13 +199,15 @@ export function createApp() {
   // ── Scoperta dell'app: il menu si accende pagina per pagina ─────────────
 
   const loadDiscovery = async (user: AuthedUser): Promise<DiscoveryFacts> => {
-    const [profile, entries, tarot, days] = await Promise.all([
+    const [profile, entries, tarot, days, rituals] = await Promise.all([
       db<{ discovered_pages: string[] | null }[]>(user, 'profiles?select=discovered_pages'),
       db(user, 'journal_entries?select=id&limit=1', { prefer: 'count=exact' }),
       db<{ id: string }[]>(user, 'tarot_readings?select=id&reading=neq.&limit=1'),
       db<{ day: string }[]>(user, 'rpc/my_active_days', { method: 'POST', body: {} }),
+      db(user, 'rituals?select=id&limit=1', { prefer: 'count=exact' }),
     ]);
     return {
+      rituals: rituals.count ?? 0,
       discovered: cleanDiscovered(profile.data?.[0]?.discovered_pages),
       journalEntries: entries.count ?? 0,
       hasTarotReading: Boolean(tarot.data?.length),
