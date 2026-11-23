@@ -3210,5 +3210,56 @@ html.is-home body {
       repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--line) - 1px), rgba(86, 130, 186, 0.28) calc(var(--line) - 1px), rgba(86, 130, 186, 0.28) var(--line)),
       radial-gradient(ellipse at 30% 20%, #fbf5e6 0%, #f3e8cf 60%, #e9dbbb 100%);
     background-position: 0 0, 0 1.8rem, 0 0;
+/* ── Voce: inviti all'upgrade ───────────────────────────── */
+.voice-upgrade {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: transparent;
+  border: 1px solid rgba(207, 165, 74, 0.45);
+  border-radius: 999px;
+  padding: 0.45rem 1.1rem;
+  color: var(--gold-light);
+  font-family: var(--font-heading);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  box-shadow: 0 0 16px rgba(207, 165, 74, 0.15);
+  transition: box-shadow 0.4s ease, background 0.4s ease;
+}
+.voice-upgrade:hover,
+.voice-upgrade:focus-visible {
+  background: rgba(207, 165, 74, 0.1);
+  box-shadow: 0 0 24px rgba(236, 212, 154, 0.35);
+  outline: none;
+}
+.voice-upgrade.is-soon {
+  cursor: default;
+  opacity: 0.75;
+}
+.dictation-button.is-locked {
+  opacity: 0.5;
+}
+.dictation-button.is-locked + .dictation-status {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* Il piano a cui porta l'invito si illumina. */
+.plan-card.is-highlighted {
+  border-color: rgba(236, 212, 154, 0.8);
+  animation: plan-glow 3.2s ease-in-out infinite;
+}
+@keyframes plan-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 1px rgba(207, 165, 74, 0.45), 0 0 26px rgba(207, 165, 74, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 0 1px rgba(236, 212, 154, 0.8), 0 0 54px rgba(207, 165, 74, 0.4);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .plan-card.is-highlighted {
+    animation: none;
+    box-shadow: 0 0 0 1px rgba(236, 212, 154, 0.8), 0 0 40px rgba(207, 165, 74, 0.3);
   }
 }

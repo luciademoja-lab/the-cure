@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from '../../i18n/I18nProvider';
 import { apiPost, streamEvents } from '../../lib/api';
-import { SpeechQueue, speechSupported } from '../../lib/speech';
+import { UpgradeVoiceButton } from '../atoms/UpgradeVoiceButton';
 import { SacredSymbol } from '../atoms/SacredSymbol';
 import { TarotSpread, TarotText } from './TarotSpread';
 import type { TarotCardData, TarotReading } from './tarotTypes';
@@ -25,17 +25,15 @@ export function TarotModal({
   onClose: (reading: TarotReading | null) => void;
   onOptOut?: (optOut: boolean) => void;
 }) {
-  const { t, locale } = useTranslation();
+  const { t } = useTranslation();
   const [cards, setCards] = useState<TarotCardData[]>([]);
   const [revealed, setRevealed] = useState(0);
   const [shown, setShown] = useState('');
   const [finished, setFinished] = useState(false);
   const [error, setError] = useState('');
   const [optOut, setOptOut] = useState(false);
-  const [speaking, setSpeaking] = useState(false);
   const target = useRef('');
   const result = useRef<TarotReading | null>(null);
-  const speech = useRef<SpeechQueue | null>(null);
   const started = useRef(false);
 
   // La lettura arriva dal server; le carte si girano una alla volta.
@@ -88,22 +86,9 @@ export function TarotModal({
     return () => window.clearInterval(timer);
   }, [revealed, finished]);
 
-  useEffect(() => () => speech.current?.stop(), []);
 
   const writing = !error && (!finished || shown.length < target.current.length);
 
-  const toggleVoice = useCallback(() => {
-    if (speaking) {
-      speech.current?.stop();
-      setSpeaking(false);
-      return;
-    }
-    const q = new SpeechQueue(locale, () => setSpeaking(false));
-    speech.current = q;
-    setSpeaking(true);
-    q.push(target.current + '\n');
-    q.flush();
-  }, [speaking, locale]);
 
   const changeOptOut = async (value: boolean) => {
     setOptOut(value);
@@ -149,11 +134,7 @@ export function TarotModal({
         </div>
 
         <div className="tarot-modal-footer">
-          {speechSupported() && finished && !error && (
-            <button type="button" className="cta-button secondary" onClick={toggleVoice}>
-              {speaking ? t('tarot.stopVoice') : t('tarot.readAloud')}
-            </button>
-          )}
+          {finished && !error && <UpgradeVoiceButton />}
           <label className="tarot-optout">
             <input type="checkbox" checked={optOut} onChange={(e) => void changeOptOut(e.target.checked)} />
             {t('tarot.optOut')}

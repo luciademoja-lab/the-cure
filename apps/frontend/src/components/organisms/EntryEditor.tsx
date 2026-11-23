@@ -4,6 +4,7 @@ import { Button } from '../atoms/Button';
 import { useTranslation } from '../../i18n/I18nProvider';
 import { apiGet, ChatMessage, streamChat } from '../../lib/api';
 import { DictationButton } from '../atoms/DictationButton';
+import { UpgradeVoiceButton } from '../atoms/UpgradeVoiceButton';
 import { appendDictated, useDictation } from '../../hooks/useDictation';
 import { SpeechQueue, speechSupported } from '../../lib/speech';
 import { ElayraBubbles } from '../molecules/ElayraBubbles';
@@ -255,17 +256,8 @@ export function EntryEditor(_props: EntryEditorProps = {}) {
               onText={(piece) => setInputText((prev) => appendDictated(prev, piece))}
             />
           )}
-          {voiceAvailable && (
-            <button
-              type="button"
-              className={`voice-mode-button ${voiceMode ? 'is-on' : ''}`}
-              onClick={toggleVoiceMode}
-              aria-pressed={voiceMode}
-            >
-              <span className="voice-mode-orb" aria-hidden="true" />
-              {voiceMode ? t('voice.conversationOff') : t('voice.conversationOn')}
-            </button>
-          )}
+          {/* La voce di Elayra arriverà con il piano H24: per ora c'è l'invito. */}
+          <UpgradeVoiceButton />
           {voiceMode && (
             <span className="dictation-status" aria-live="polite">
               {elayraSpeaking

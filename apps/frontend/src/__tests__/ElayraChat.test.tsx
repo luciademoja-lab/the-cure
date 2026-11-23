@@ -160,3 +160,24 @@ describe('Diario', () => {
     vi.unstubAllGlobals();
   });
 });
+
+import { canDictate } from '../components/atoms/UpgradeVoiceButton';
+
+describe('voce e piani', () => {
+  it('le note vocali sono incluse da Part time in su', () => {
+    expect(canDictate('free')).toBe(false);
+    expect(canDictate('forgia')).toBe(false);
+    expect(canDictate('part')).toBe(true);
+    expect(canDictate('h24')).toBe(true);
+  });
+
+  it('al posto della voce di Elayra c’è l’invito a H24', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(json({ messages: [] }));
+    vi.stubGlobal('fetch', fetchMock);
+    fakeSupabase.signInAs();
+    renderChat();
+    expect(await screen.findByRole('button', { name: /Upgrade to H24 to hear my voice/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Talk with Elayra/ })).not.toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+});
