@@ -12,6 +12,8 @@ export interface AuthedUser {
   nickname?: string;
   /** Livello di autenticazione: 'aal2' solo dopo il codice dell'autenticatore. */
   aal: string;
+  /** La sessione di Supabase a cui appartiene il token (serve al codice via email). */
+  sessionId?: string;
   token: string;
 }
 
@@ -49,6 +51,7 @@ export async function getUserFromToken(token: string): Promise<AuthedUser> {
     email: data.email,
     nickname: data.user_metadata?.nickname,
     aal: typeof claims.aal === 'string' ? claims.aal : 'aal1',
+    sessionId: typeof claims.session_id === 'string' ? claims.session_id : undefined,
     token,
   };
 }

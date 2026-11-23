@@ -41,16 +41,40 @@ describe('SecurityGate — 2FA obbligatoria e primo accesso', () => {
     vi.restoreAllMocks();
   });
 
-  it('senza autenticatore configurato mostra il QR da inquadrare e non il contenuto', async () => {
+  it('senza autenticatore fa scegliere tra app (consigliata) ed email, e con l’app mostra il QR', async () => {
+    const user = userEvent.setup();
     vi.spyOn(supabase.auth.mfa, 'getAuthenticatorAssuranceLevel').mockResolvedValue({ data: { currentLevel: 'aal1', nextLevel: 'aal1' }, error: null } as never);
     const enroll = vi.spyOn(supabase.auth.mfa, 'enroll');
+    fetchMock.mockResolvedValueOnce(json({ verified: false, hasTotp: false, usedBefore: false }));
     renderGate();
+    expect(await screen.findByText('Choose your second step')).toBeInTheDocument();
+    expect(screen.getAllByText(/Less safe/).length).toBeGreaterThan(0);
+    expect(enroll).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: /Authenticator app \(recommended\)/ }));
     expect(await screen.findByText('Protect your account')).toBeInTheDocument();
     expect(screen.getByText('SECRET')).toBeInTheDocument();
     expect(enroll).toHaveBeenCalledWith(expect.objectContaining({ factorType: 'totp' }));
     expect(screen.queryByText('contenuto protetto')).toBeNull();
-    expect(fetchMock).not.toHaveBeenCalled();
     void mfa;
+  });
+
+  it('con il codice via email: lo manda, lo verifica ed entra', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(supabase.auth.mfa, 'getAuthenticatorAssuranceLevel').mockResolvedValue({ data: { currentLevel: 'aal1', nextLevel: 'aal1' }, error: null } as never);
+    fetchMock.mockResolvedValueOnce(json({ verified: false, hasTotp: false, usedBefore: true }));
+    renderGate();
+    // chi l'ha già usato va dritto al codice via email
+    const send = await screen.findByRole('button', { name: 'Send me the code' });
+    fetchMock.mockResolvedValueOnce(json({ to: 'a•••@b.it' }));
+    await user.click(send);
+    expect(String(fetchMock.mock.calls[1][0])).toContain('/api/mfa/email/send');
+    expect(await screen.findByText('Code sent to a•••@b.it.')).toBeInTheDocument();
+    fetchMock.mockResolvedValueOnce(json({ verified: true }));
+    fetchMock.mockResolvedValueOnce(json(me(true)));
+    fetchMock.mockResolvedValue(json({ visible: ['journal'] }));
+    await user.type(screen.getByLabelText('6-digit code'), '123456');
+    await user.click(screen.getByRole('button', { name: 'Verify' }));
+    expect(await screen.findByText('contenuto protetto')).toBeInTheDocument();
   });
 
   it('con autenticatore già configurato chiede il codice e accetta solo 6 cifre', async () => {

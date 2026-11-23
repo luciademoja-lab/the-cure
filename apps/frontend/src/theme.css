@@ -3398,3 +3398,46 @@ html.is-home body {
   font-size: 0.75rem;
   color: var(--text-muted);
 }
+
+/* La scelta del secondo passaggio: app (consigliata) o codice via email. */
+.gate-choices {
+  display: grid;
+  gap: 0.8rem;
+  margin: 1.2rem 0;
+}
+.gate-choice {
+  display: grid;
+  gap: 0.35rem;
+  text-align: left;
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(207, 165, 74, 0.35);
+  border-radius: 12px;
+  background: rgba(207, 165, 74, 0.05);
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.3s ease, border-color 0.3s ease;
+}
+.gate-choice strong {
+  font-family: var(--font-heading);
+  color: var(--gold-light);
+}
+.gate-choice span {
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+.gate-choice.is-recommended {
+  border-color: rgba(236, 212, 154, 0.7);
+  box-shadow: 0 0 18px rgba(207, 165, 74, 0.15);
+}
+.gate-choice:hover,
+.gate-choice:focus-visible {
+  background: rgba(207, 165, 74, 0.12);
+  outline: none;
+}
+.gate-choice .gate-warning,
+.gate-warning {
+  color: #e3b27a;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
