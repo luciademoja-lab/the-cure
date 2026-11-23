@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from '../i18n/I18nProvider';
 import { apiPost } from '../lib/api';
@@ -20,6 +20,12 @@ export function PlansPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState('');
   const outcome = params.get('checkout');
+  // Arrivando da "Passa a H24 per ascoltarmi" (o dalla dettatura) quel piano si illumina.
+  const highlight = params.get('highlight');
+  const highlighted = useRef<HTMLLIElement | null>(null);
+  useEffect(() => {
+    highlighted.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [highlight, account?.plan]);
 
   // Dopo il pagamento Stripe avvisa il server in pochi secondi: ricarichiamo un paio di volte.
   useEffect(() => {
@@ -91,7 +97,11 @@ export function PlansPage() {
         {account.plans.map((plan) => {
           const isCurrent = plan.id === current;
           return (
-            <li key={plan.id} className={`card plan-card ${isCurrent ? 'current' : ''}`}>
+            <li
+              key={plan.id}
+              ref={plan.id === highlight ? highlighted : undefined}
+              className={`card plan-card ${isCurrent ? 'current' : ''} ${plan.id === highlight ? 'is-highlighted' : ''}`}
+            >
               <h2>{t(`plan.name.${plan.id}`)}</h2>
               <p className="plan-price">
                 {plan.priceCents === 0 ? t('plans.free') : <>{euro(plan.priceCents)}<span>{t('plans.perMonth')}</span></>}
@@ -101,6 +111,8 @@ export function PlansPage() {
                 <li>{plan.tier === 'full' ? t('plans.modelFull') : t('plans.modelLight')}</li>
                 <li className={plan.forgeRooms ? '' : 'off'}>{t('plans.rooms')}</li>
                 <li className={plan.forgeElayra ? '' : 'off'}>{t('plans.roomsElayra')}</li>
+                <li className={['part', 'full', 'h24'].includes(plan.id) ? '' : 'off'}>{t('plans.dictation')}</li>
+                <li className={plan.id === 'h24' ? '' : 'off'}>{t('plans.elayraVoice')}</li>
               </ul>
               {isCurrent ? (
                 <p className="plan-badge">{t('plans.yourPlan')}</p>

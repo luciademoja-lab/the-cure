@@ -1,11 +1,15 @@
 import { useTranslation } from '../../i18n/I18nProvider';
 import { useDictation } from '../../hooks/useDictation';
+import { useAccount } from '../../contexts/AccountContext';
+import { canDictate, UpgradeDictationButton } from './UpgradeVoiceButton';
 
 /** Pulsante microfono: detta e trascrive nel campo di testo accanto. */
 export function DictationButton({ onText, disabled }: { onText: (piece: string) => void; disabled?: boolean }) {
   const { t, locale } = useTranslation();
   const { supported, listening, interim, error, start, stop } = useDictation({ locale, onFinal: onText });
+  const { account } = useAccount();
 
+  if (!canDictate(account?.plan)) return <UpgradeDictationButton />;
   if (!supported) {
     return <p className="dictation-unsupported">{t('voice.unsupported')}</p>;
   }
