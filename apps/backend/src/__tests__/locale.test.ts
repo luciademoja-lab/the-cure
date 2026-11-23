@@ -27,8 +27,10 @@ describe('lingua della richiesta', () => {
   });
 
   it('chiede a Elayra di rispondere nella lingua dell’utente', () => {
-    expect(buildElayraSystemPrompt({ locale: 'en' })).toContain('Rispondi SEMPRE e SOLO in inglese');
-    expect(buildElayraSystemPrompt({ locale: 'it' })).toContain('Rispondi SEMPRE e SOLO in italiano');
+    expect(buildElayraSystemPrompt({ locale: 'en' })).toContain('rispondi in inglese');
+    expect(buildElayraSystemPrompt({ locale: 'it' })).toContain('rispondi in italiano');
+    // Se la persona scrive in un'altra lingua, Elayra la segue.
+    expect(buildElayraSystemPrompt({ locale: 'it' })).toContain('rispondi nella lingua in cui ti scrive');
     expect(buildElayraSystemPrompt({ locale: 'it' })).not.toContain('{{LINGUA}}');
   });
 });

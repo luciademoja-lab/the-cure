@@ -72,3 +72,15 @@ describe('scoperta', () => {
     expect(stripMarks('Caspita.\n[[pausa]]\nCome stai?\n[[pagina:daily-light]]')).toBe('Caspita.\n\nCome stai?');
   });
 });
+
+import { nextGuideStep } from '../discovery';
+
+describe('primi passi della guida', () => {
+  const base = { discovered: ['journal' as const], hasTarotReading: false, activeDays: 1, journalEntries: 0 };
+  it('segue l’ordine: Daily Light, poi Termina e salva, poi i Tarocchi comparsi', () => {
+    expect(nextGuideStep(base)).toContain('Daily Light');
+    expect(nextGuideStep({ ...base, discovered: ['journal', 'daily-light'] })).toContain('Termina e salva');
+    expect(nextGuideStep({ ...base, discovered: ['journal', 'daily-light'], journalEntries: 1, hasTarotReading: true })).toContain('Tarocchi');
+    expect(nextGuideStep({ ...base, discovered: ['journal', 'daily-light'], journalEntries: 4 })).toContain('nessuno');
+  });
+});

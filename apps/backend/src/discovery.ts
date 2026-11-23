@@ -20,6 +20,8 @@ export type DiscoveryFacts = {
   journalEntries: number;
   hasTarotReading: boolean;
   activeDays: number;
+  /** Rituali della Daily Light completati in tutto. */
+  rituals?: number;
 };
 
 /** Le pagine visibili nel menu: quelle visitate, più i Tarocchi appena arriva la prima lettura. */
@@ -60,10 +62,15 @@ export function discoveryContext(facts: DiscoveryFacts): string {
   } else {
     lines.push(`Pagine che non ha ancora scoperto: ${hidden.map((k) => `${LABEL[k]} [${k}]`).join(', ')}.`);
   }
-  lines.push(`Pagine di diario salvate: ${facts.journalEntries}. Giorni in cui ha usato l'app: ${facts.activeDays}.`);
+  lines.push(
+    `Pagine di diario salvate: ${facts.journalEntries}. Rituali della Daily Light fatti: ${facts.rituals ?? 0}. Letture dei tarocchi ricevute: ${
+      facts.hasTarotReading ? 'sì' : 'nessuna'
+    }. Giorni in cui ha usato l'app: ${facts.activeDays}.`
+  );
+  lines.push(`Primo passo ancora da fare: ${nextGuideStep(facts, visible)}`);
 
   const ready: string[] = [];
-  if (!visible.includes('daily-light')) ready.push('daily-light: è la prima da proporre, appena c’è stato un primo scambio vero');
+  if (!visible.includes('daily-light')) ready.push('daily-light: è la prima da proporre, appena la persona risponde al saluto');
   if (visible.includes('daily-light') && !visible.includes('path')) ready.push('path: quando ha fatto almeno una pratica o salvato una pagina');
   if (!visible.includes('synchronicities')) {
     ready.push(
@@ -78,6 +85,14 @@ export function discoveryContext(facts: DiscoveryFacts): string {
   if (!visible.includes('plans')) ready.push('plans: solo se chiede dei piani o finisce le risposte del mese');
   if (ready.length) lines.push(`Quando ha senso proporle:\n- ${ready.join('\n- ')}`);
   return lines.join('\n');
+}
+
+/** Il prossimo dei "primi passi" per chi arriva (vedi il prompt), o niente se li ha già fatti. */
+export function nextGuideStep(facts: DiscoveryFacts, visible: PageKey[] = visiblePages(facts)): string {
+  if (!visible.includes('daily-light')) return '1, presentare la Daily Light (dopo che ha risposto al saluto).';
+  if (facts.journalEntries === 0) return '3, spiegare "Termina e salva" quando torna nel diario.';
+  if (facts.hasTarotReading && facts.journalEntries <= 1) return '2, se non l’hai già detto: la pagina Tarocchi è comparsa nel menu.';
+  return 'nessuno, i primi passi sono fatti: continua ad ascoltare.';
 }
 
 /** I marcatori che Elayra può scrivere nella risposta: la pausa tra due messaggi e il pulsante di una pagina. */
