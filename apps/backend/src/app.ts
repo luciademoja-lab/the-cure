@@ -501,14 +501,14 @@ export function createApp() {
       res.setHeader('X-Accel-Buffering', 'no');
       res.flushHeaders?.();
       const send = (event: string, payload: unknown) => {
+        // Se la connessione è caduta (telefono in movimento) si smette di scrivere, ma la risposta si completa e si salva:
+        // riaprendo la chat la persona la trova intera.
+        if (res.destroyed || res.writableEnded) return;
         res.write(`event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`);
       };
       send('user', { id: saved?.[0]?.id });
 
       const abort = new AbortController();
-      res.on('close', () => {
-        if (!res.writableEnded) abort.abort();
-      });
 
       try {
         const reply = await aiService.streamElayraReply([...history, { role: 'user', content }], {

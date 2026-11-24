@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { TextArea } from '../atoms/TextArea';
 import { useTranslation } from '../../i18n/I18nProvider';
-import { apiGet, ChatMessage, streamChat } from '../../lib/api';
+import { ApiError, apiGet, ChatMessage, streamChat } from '../../lib/api';
 import { DictationButton } from '../atoms/DictationButton';
 import { UpgradeVoiceButton } from '../atoms/UpgradeVoiceButton';
 import { appendDictated, useDictation } from '../../hooks/useDictation';
@@ -139,6 +139,26 @@ export function EntryEditor(_props: EntryEditorProps = {}) {
   const busy = isThinking || isStreaming || isSaving || isLoadingHistory;
   const hasUserMessages = messages.some((m) => m.role === 'user');
 
+  /**
+   * Dopo un'interruzione di rete ricarica la conversazione di oggi (due tentativi, a un secondo e mezzo):
+   * se dopo il messaggio appena mandato c'è la risposta di Elayra, la mostra intera al posto dell'errore.
+   */
+  const recoverReply = async (sent: string): Promise<ChatMessage[] | null> => {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await new Promise((r) => window.setTimeout(r, 1500));
+      try {
+        const { messages: saved } = await apiGet<{ messages: ChatMessage[] }>('/api/chat/history');
+        const lastUser = saved.map((m) => m.role).lastIndexOf('user');
+        if (lastUser >= 0 && saved[lastUser].content.trim() === sent && saved.slice(lastUser + 1).some((m) => m.role === 'assistant')) {
+          return saved;
+        }
+      } catch {
+        /* ancora senza rete: si riprova una volta */
+      }
+    }
+    return null;
+  };
+
   const handleSendMessage = async (spoken?: string) => {
     const content = (spoken ?? inputText).trim();
     if (!content || busy) return;
@@ -184,8 +204,14 @@ export function EntryEditor(_props: EntryEditorProps = {}) {
         onNote: (text) => setMessages((prev) => [...prev, { role: 'assistant', content: text, live: true }]),
       });
     } catch (e) {
-      const message = e instanceof Error ? e.message : t('chat.error.generic');
-      setMessages((prev) => [...prev, { role: 'assistant', content: message, local: true, kind: 'error' }]);
+      // Se è caduta solo la connessione, Elayra di solito ha finito e la risposta è già salvata: la si recupera.
+      const recovered = e instanceof ApiError && e.status === 0 ? await recoverReply(content) : null;
+      if (recovered) {
+        setMessages(recovered);
+      } else {
+        const message = e instanceof Error ? e.message : t('chat.error.generic');
+        setMessages((prev) => [...prev, { role: 'assistant', content: message, local: true, kind: 'error' }]);
+      }
     } finally {
       setIsThinking(false);
       setIsStreaming(false);

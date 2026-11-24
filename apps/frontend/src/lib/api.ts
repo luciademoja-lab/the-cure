@@ -92,6 +92,14 @@ export type ChatMessage = { id?: string; role: 'user' | 'assistant'; content: st
  * Manda un messaggio a Elayra e riceve la risposta a pezzi (Server-Sent Events).
  * Restituisce il testo completo quando la risposta è finita.
  */
+/** La risposta si è interrotta per la rete, non per un errore di Elayra: conviene ricontrollare la cronologia. */
+export class StreamInterrupted extends ApiError {
+  constructor(message: string) {
+    super(0, message);
+    this.name = 'StreamInterrupted';
+  }
+}
+
 export async function streamChat(
   content: string,
   opts: {
@@ -138,7 +146,15 @@ export async function streamChat(
   };
 
   for (;;) {
-    const { value, done } = await reader.read();
+    let chunk: ReadableStreamReadResult<Uint8Array>;
+    try {
+      chunk = await reader.read();
+    } catch (e) {
+      // La connessione è caduta a metà (telefono, rete che cambia): la risposta può essere già salvata.
+      if (opts.signal?.aborted) throw e;
+      throw new StreamInterrupted(msg('interrupted'));
+    }
+    const { value, done } = chunk;
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
     let idx: number;
@@ -149,7 +165,7 @@ export async function streamChat(
     }
   }
   if (buffer.trim()) handle(buffer);
-  if (!finished) throw new ApiError(0, msg('interrupted'));
+  if (!finished) throw new StreamInterrupted(msg('interrupted'));
   return full;
 }
 
