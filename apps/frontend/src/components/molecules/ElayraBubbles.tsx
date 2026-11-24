@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../../i18n/I18nProvider';
 import { pageByKey } from '../../lib/discovery';
+import { ConsentAsk } from './ConsentAsk';
 
 /** Pausa tra due messaggi di Elayra, mentre si vedono i puntini di "sta scrivendo". */
 const PAUSE_MS = 1100;
 
-export type ElayraPart = { text: string; pages: string[] };
+export type ElayraPart = { text: string; pages: string[]; consent?: boolean };
 
 /**
  * Elayra può mandare più messaggi di fila (separati da [[pausa]]) e mettere sotto un messaggio
@@ -17,7 +18,12 @@ export function splitElayra(content: string): ElayraPart[] {
     .split(/\s*\[\[pausa\]\]\s*/)
     .map((piece) => {
       const pages: string[] = [];
+      let consent = false;
       const text = piece
+        .replace(/\[\[\s*consenso\s*\]\]/gi, () => {
+          consent = true;
+          return '';
+        })
         .replace(/\[\[\s*(?:pagina|page)\s*:\s*([^\]]+?)\s*\]\]/gi, (_m, key: string) => {
           const page = pageByKey(key);
           if (page && !pages.includes(page.key)) pages.push(page.key);
@@ -27,9 +33,9 @@ export function splitElayra(content: string): ElayraPart[] {
         .replace(/\[\[[^\]]*\]?$/, '')
         .replace(/\n{3,}/g, '\n\n')
         .trim();
-      return { text, pages };
+      return consent ? { text, pages, consent } : { text, pages };
     })
-    .filter((p) => p.text || p.pages.length);
+    .filter((p) => p.text || p.pages.length || p.consent);
 }
 
 /** Testo leggibile, senza marcatori (per la voce e per copiare). */
@@ -72,6 +78,7 @@ export function ElayraBubbles({ content, live = false, className = '' }: Props) 
       {visible.map((part, i) => (
         <div key={i} className={`chat-message assistant ${className} ${wasLive.current && i > 0 ? 'is-arriving' : ''}`}>
           {part.text && <p>{part.text}</p>}
+          {part.consent && <ConsentAsk />}
           {part.pages.length > 0 && (
             <div className="chat-page-buttons">
               {part.pages.map((key) => {

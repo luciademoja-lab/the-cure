@@ -250,6 +250,31 @@ export function ProfilePage() {
         {note('notes')}
       </section>
 
+      <section className="card profile-card" aria-labelledby="profile-consent">
+        <h2 id="profile-consent">{t('consent.title')}</h2>
+        <p className="profile-muted">{t('consent.lead')}</p>
+        <p className="profile-consent-status">
+          {t(account.trainingConsent ? 'consent.statusYes' : account.trainingConsent === false ? 'consent.statusNo' : 'consent.statusNone')}
+        </p>
+        <button
+          type="button"
+          className={account.trainingConsent ? 'cta-button secondary' : 'cta-button'}
+          disabled={busy !== null}
+          onClick={() =>
+            void run('consent', async () => {
+              const allow = !account.trainingConsent;
+              await apiPost('/api/consent/training', { allow, source: 'profile' });
+              await refresh();
+              return t(allow ? 'consent.savedYes' : 'consent.savedNo');
+            })
+          }
+        >
+          {t(account.trainingConsent ? 'consent.revoke' : 'consent.allowShort')}
+        </button>
+        <p className="profile-muted profile-small">{t('consent.fine')}</p>
+        {note('consent')}
+      </section>
+
       <section className="card profile-card" aria-labelledby="profile-name">
         <h2 id="profile-name">{t('profile.name')}</h2>
         <form onSubmit={saveName} className="profile-form">

@@ -3398,3 +3398,24 @@ html.is-home body {
   font-size: 0.75rem;
   color: var(--text-muted);
 }
+
+/* Consenso a crescere: in chat e nel profilo. */
+.chat-consent {
+  flex-wrap: wrap;
+}
+.chat-page-button.is-quiet {
+  background: transparent;
+  border-color: rgba(207, 165, 74, 0.35);
+  color: var(--text-muted);
+}
+.chat-consent-done {
+  margin: 0.6rem 0 0;
+  font-size: 0.88rem;
+  color: var(--gold-light);
+  opacity: 0.85;
+}
+.profile-consent-status {
+  margin: 0.4rem 0 0.9rem;
+  color: var(--gold-light);
+  font-family: var(--font-heading);
+}
