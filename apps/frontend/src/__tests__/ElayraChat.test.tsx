@@ -94,6 +94,30 @@ describe('Chat con Elayra', () => {
     expect(await screen.findByText('Per oggi ci siamo dette tanto. Torniamo a parlarci domani.')).toBeInTheDocument();
   });
 
+  it('se la connessione cade a metà risposta, recupera la risposta già salvata invece di mostrare l’errore', async () => {
+    const user = userEvent.setup();
+    fetchMock.mockResolvedValueOnce(json({ messages: [] }));
+    renderChat();
+    await screen.findByText("I'm here. How are you, right now?");
+
+    const enc = new TextEncoder();
+    const broken = new ReadableStream({
+      start(controller) {
+        controller.enqueue(enc.encode('event: user\ndata: {"id":"u1"}\n\nevent: delta\ndata: {"text":"Ti ascolto, dopo così"}\n\n'));
+        controller.error(new TypeError('network error'));
+      },
+    });
+    fetchMock.mockResolvedValueOnce(new Response(broken, { status: 200, headers: { 'Content-Type': 'text/event-stream' } }));
+    fetchMock.mockResolvedValueOnce(
+      json({ messages: [{ id: 'u1', role: 'user', content: 'sto tornando da mia mamma' }, { id: 'a1', role: 'assistant', content: 'Ti ascolto, dopo così tanto tempo.' }] })
+    );
+    await user.type(screen.getByLabelText('Write to Elayra'), 'sto tornando da mia mamma{Enter}');
+
+    expect(await screen.findByText('Ti ascolto, dopo così tanto tempo.', {}, { timeout: 4000 })).toBeInTheDocument();
+    expect(screen.queryByText(/network error/i)).toBeNull();
+    expect(screen.queryByText(/interrupted/i)).toBeNull();
+  });
+
   it('non c’è più “Finish and save”: a mezzanotte la conversazione diventa una pagina del Diario', async () => {
     fetchMock.mockResolvedValueOnce(json({ messages: [{ id: '1', role: 'user', content: 'oggi bene' }] }));
     renderChat();
