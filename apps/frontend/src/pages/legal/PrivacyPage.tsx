@@ -40,8 +40,9 @@ function PrivacyPageIt() {
         <li>Offrirti Elayra, il diario, i rituali, il Percorso, la Forgia e il Collettivo: esecuzione del contratto (art. 6.1.b) e, per i contenuti intimi, consenso esplicito (art. 9.2.a).</li>
         <li>Gestire pagamenti, fatture e obblighi fiscali: contratto e obbligo di legge (art. 6.1.b e 6.1.c).</li>
         <li>Proteggere gli account e prevenire abusi: legittimo interesse (art. 6.1.f).</li>
+        <li>Solo se lo scegli tu («Aiuta Elayra a crescere»): usare le tue parole, senza nome né email, per addestrare il modello di Elayra: consenso esplicito (art. 6.1.a e 9.2.a). È facoltativo, non cambia il servizio e lo revochi quando vuoi dal profilo: da quel momento le tue parole non entrano negli addestramenti successivi, mentre ciò che un addestramento già fatto ha imparato non si può togliere da quel modello.</li>
       </ul>
-      <p>Non vendiamo i tuoi dati, non facciamo pubblicità mirata e non usiamo le tue conversazioni per addestrare modelli.</p>
+      <p>Non vendiamo i tuoi dati e non facciamo pubblicità mirata. Senza il tuo consenso esplicito, le tue conversazioni non vengono usate per addestrare nessun modello.</p>
 
       <h2>4. Con chi li condividiamo (responsabili del trattamento)</h2>
       <ul>
@@ -118,8 +119,9 @@ function PrivacyPageEn() {
         <li>Providing Elayra, the journal, rituals, the Path, the Forge and the Collective: performance of the contract (Art. 6.1.b) and, for intimate content, explicit consent (Art. 9.2.a).</li>
         <li>Managing payments, invoices and tax obligations: contract and legal obligation (Art. 6.1.b and 6.1.c).</li>
         <li>Protecting accounts and preventing abuse: legitimate interest (Art. 6.1.f).</li>
+        <li>Only if you choose it (“Help Elayra grow”): using your words, without your name or email, to train Elayra’s model: explicit consent (Art. 6.1.a and 9.2.a). It is optional, does not change the service and you can revoke it anytime from your profile: from then on your words are left out of later trainings, while what a past training has already learned cannot be removed from that model.</li>
       </ul>
-      <p>We do not sell your data, we do not do targeted advertising and we do not use your conversations to train models.</p>
+      <p>We do not sell your data and we do not do targeted advertising. Without your explicit consent, your conversations are not used to train any model.</p>
 
       <h2>4. Who we share it with (processors)</h2>
       <ul>

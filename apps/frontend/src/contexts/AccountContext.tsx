@@ -21,6 +21,8 @@ export interface Account {
   avatarKind: AvatarKind | null;
   avatarPath: string | null;
   elayraNotes: string;
+  /** Consenso ad aiutare Elayra a crescere: null finché non si sceglie. */
+  trainingConsent?: boolean | null;
   plan: PlanId;
   usage: { used: number; limit: number };
   subscription: { plan: PlanId; status: string; current_period_end: string | null; sponsored_by: string | null } | null;

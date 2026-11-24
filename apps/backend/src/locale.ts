@@ -28,6 +28,7 @@ const EN: Record<string, string> = {
   'Data non valida': 'Invalid date',
   'Elayra non è ancora collegata: manca ANTHROPIC_API_KEY sul server': 'Elayra is not connected yet: ANTHROPIC_API_KEY is missing on the server',
   'Errore del database': 'Database error',
+  'Scelta non valida': 'Invalid choice',
   'Oggi Elayra ha dato tutte le risposte del piano gratuito. Torna domani, oppure scegli un piano per continuare adesso.':
     'Elayra has given all of today’s free-plan replies. Come back tomorrow, or choose a plan to continue now.',
   'Errore interno': 'Something went wrong on our side',

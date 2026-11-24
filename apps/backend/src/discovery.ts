@@ -24,7 +24,22 @@ export type DiscoveryFacts = {
   rituals?: number;
   /** Elayra ha riconosciuto un progetto e ha preparato l'invito alla Forgia. */
   forgeReady?: boolean;
+  /** Consenso ad aiutare Elayra a crescere: true/false se ha scelto, null se non ancora. */
+  trainingConsent?: boolean | null;
+  /** Quando Elayra l'ha chiesto l'ultima volta in chat. */
+  consentAskedAt?: string | null;
 };
+
+/** Dopo quanti giorni, se la persona non ha risposto, Elayra può chiederlo un'altra (ultima) volta. */
+export const CONSENT_ASK_AGAIN_DAYS = 14;
+
+export function consentToAsk(facts: Pick<DiscoveryFacts, 'trainingConsent' | 'consentAskedAt' | 'journalEntries'>, now = Date.now()) {
+  if (facts.trainingConsent === true || facts.trainingConsent === false) return false;
+  // Solo da quando c'è almeno una pagina di diario: non al primo incontro.
+  if (facts.journalEntries < 1) return false;
+  if (!facts.consentAskedAt) return true;
+  return now - Date.parse(facts.consentAskedAt) > CONSENT_ASK_AGAIN_DAYS * 86_400_000;
+}
 
 /**
  * Le due pagine che non si aprono a richiesta: la Sincronicità senza abbastanza pagine sarebbe vuota,
@@ -87,6 +102,15 @@ export function discoveryContext(facts: DiscoveryFacts): string {
     }. Giorni in cui ha usato l'app: ${facts.activeDays}.`
   );
   lines.push(`Primo passo ancora da fare: ${nextGuideStep(facts, visible)}`);
+  if (facts.trainingConsent === true) lines.push('Consenso a crescere: dato. Non chiederlo più.');
+  else if (facts.trainingConsent === false) lines.push('Consenso a crescere: rifiutato. Non chiederlo più e non insistere.');
+  else if (consentToAsk(facts)) {
+    lines.push(
+      'Consenso a crescere: NON ancora chiesto (o senza risposta da tempo). In questa conversazione, in un momento calmo e dopo averla ascoltata, puoi chiederlo una volta sola come spiegato in IL CONSENSO A CRESCERE. Mai se la persona sta male o è nel mezzo di qualcosa di importante: in quel caso rimanda.'
+    );
+  } else {
+    lines.push('Consenso a crescere: l’hai già chiesto da poco. Non chiederlo di nuovo; se la persona ne parla, ricordale che può scegliere dal profilo.');
+  }
 
   const ready: string[] = [];
   if (!visible.includes('daily-light')) ready.push('daily-light: è la prima da proporre, appena la persona risponde al saluto');
@@ -138,6 +162,7 @@ export const pageMark = (k: PageKey) => `[[pagina:${k}]]`;
 export function stripMarks(text: string): string {
   return text
     .replace(/\[\[\s*(?:pagina|page)\s*:[^\]]*\]\]/gi, '')
+    .replace(/\[\[\s*consenso\s*\]\]/gi, '')
     .replace(/\[\[pausa\]\]/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim();

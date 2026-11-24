@@ -11,6 +11,7 @@ vi.hoisted(() => {
 const streamCalls: any[] = [];
 const createCalls: any[] = [];
 let streamShouldFail = false;
+let streamReply: string | null = null;
 let forgeAnswer: Record<string, unknown> = { has_project: false };
 
 vi.mock('@anthropic-ai/sdk', () => {
@@ -26,6 +27,10 @@ vi.mock('@anthropic-ai/sdk', () => {
           },
           async finalMessage() {
             if (streamShouldFail) throw new Error('boom');
+            if (streamReply) {
+              onText(streamReply);
+              return { content: [{ type: 'text', text: streamReply }], stop_reason: 'end_turn' };
+            }
             onText('Sono ');
             onText('qui.');
             return { content: [{ type: 'text', text: 'Sono qui.' }] };
@@ -254,6 +259,7 @@ beforeEach(() => {
   profileRow = { nickname: 'Lumira', referral_code: 'abc12345', onboarded_at: '2026-11-01T00:00:00Z' };
   adminCalls = [];
   costToday = 0;
+  streamReply = null;
   myMatches = [];
   adminMatches = [];
   forgeMessages = [];
@@ -756,6 +762,35 @@ describe('tarocchi e report mensile', () => {
   it('rifiuta periodi che non esistono', async () => {
     expect((await request(app).post('/api/reports/generate').set(authed).send({ month: '2999-01' })).status).toBe(404);
     expect((await request(app).post('/api/reports/generate').set(authed).send({ month: 'novembre' })).status).toBe(404);
+  });
+});
+
+describe('consenso a crescere', () => {
+  it('si dà e si revoca, e ogni scelta resta nel registro', async () => {
+    const yes = await request(app).post('/api/consent/training').set(authed).send({ allow: true, source: 'chat' });
+    expect(yes.status).toBe(200);
+    expect(yes.body).toEqual({ consent: true });
+    expect(profilePatches.at(-1)?.body).toMatchObject({ training_consent: true });
+    const no = await request(app).post('/api/consent/training').set(authed).send({ allow: false });
+    expect(no.body).toEqual({ consent: false });
+    expect(profilePatches.at(-1)?.body).toMatchObject({ training_consent: false });
+    const log = adminCalls.filter((c) => c.path.startsWith('/rest/v1/training_consent_log'));
+    expect(log.map((c) => c.body)).toEqual([
+      expect.objectContaining({ granted: true, source: 'chat' }),
+      expect.objectContaining({ granted: false, source: 'profile' }),
+    ]);
+  });
+
+  it('rifiuta una scelta che non è sì o no', async () => {
+    const res = await request(app).post('/api/consent/training').set(authed).send({ allow: 'forse' });
+    expect(res.status).toBe(400);
+  });
+
+  it('quando Elayra lo chiede in chat, si annota la data per non richiederlo ogni giorno', async () => {
+    streamReply = 'Posso chiederti una cosa?\n[[consenso]]';
+    const res = await request(app).post('/api/chat').set(authed).send({ content: 'ciao' });
+    expect(res.status).toBe(200);
+    expect(profilePatches.some((p) => p.body.training_consent_asked_at)).toBe(true);
   });
 });
 

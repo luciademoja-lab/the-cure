@@ -127,6 +127,48 @@ describe('Chat con Elayra', () => {
   });
 });
 
+describe('consenso a crescere in chat', () => {
+  const fetchMock = vi.fn();
+  beforeEach(() => {
+    fakeSupabase.signInAs();
+    fetchMock.mockReset();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('il marcatore diventa due pulsanti; scelto “sì”, resta la conferma', async () => {
+    const user = userEvent.setup();
+    fetchMock.mockResolvedValueOnce(json({ consent: null }));
+    render(
+      <MemoryRouter>
+        <I18nProvider>
+          <ElayraBubbles content={'Posso chiederti una cosa?\n[[consenso]]'} />
+        </I18nProvider>
+      </MemoryRouter>
+    );
+    expect(screen.queryByText(/consenso/)).toBeNull();
+    fetchMock.mockResolvedValueOnce(json({ consent: true }));
+    await user.click(await screen.findByRole('button', { name: 'Yes, I’ll help Elayra grow' }));
+    expect(await screen.findByText(/Choice saved/)).toBeInTheDocument();
+    const [url, init] = fetchMock.mock.calls[1];
+    expect(url).toBe('/api/consent/training');
+    expect(JSON.parse(init.body)).toEqual({ allow: true, source: 'chat' });
+  });
+
+  it('se la scelta è già fatta, niente pulsanti', async () => {
+    fetchMock.mockResolvedValueOnce(json({ consent: false }));
+    render(
+      <MemoryRouter>
+        <I18nProvider>
+          <ElayraBubbles content={'Ciao.\n[[consenso]]'} />
+        </I18nProvider>
+      </MemoryRouter>
+    );
+    expect(await screen.findByText(/nothing changes/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /help Elayra grow/ })).toBeNull();
+  });
+});
+
 describe('Elayra in più messaggi', () => {
   it('divide il testo in bolle e trasforma il marcatore della pagina in un pulsante', () => {
     const parts = splitElayra('Caspita.\n[[pausa]]\nTi va di provare?\n[[pagina:daily-light]]');

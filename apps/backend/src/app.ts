@@ -177,7 +177,8 @@ export function createApp() {
         avatar_kind: string | null;
         avatar_path: string | null;
         elayra_notes: string | null;
-      }[]>(user, 'profiles?select=nickname,referral_code,onboarded_at,avatar_kind,avatar_path,elayra_notes'),
+        training_consent: boolean | null;
+      }[]>(user, 'profiles?select=nickname,referral_code,onboarded_at,avatar_kind,avatar_path,elayra_notes,training_consent'),
     ]);
     const planId: PlanId = isPlanId(plan.data) ? plan.data : 'free';
     const p = profile.data?.[0];
@@ -190,6 +191,7 @@ export function createApp() {
       avatarKind: p?.avatar_kind || null,
       avatarPath: p?.avatar_path || null,
       elayraNotes: p?.elayra_notes || '',
+      trainingConsent: p?.training_consent ?? null,
     };
   };
 
@@ -226,7 +228,10 @@ export function createApp() {
 
   const loadDiscovery = async (user: AuthedUser): Promise<DiscoveryFacts> => {
     const [profile, entries, tarot, days, rituals, forge] = await Promise.all([
-      db<{ discovered_pages: string[] | null }[]>(user, 'profiles?select=discovered_pages'),
+      db<{ discovered_pages: string[] | null; training_consent: boolean | null; training_consent_asked_at: string | null }[]>(
+        user,
+        'profiles?select=discovered_pages,training_consent,training_consent_asked_at'
+      ),
       db(user, 'journal_entries?select=id&limit=1', { prefer: 'count=exact' }),
       db<{ id: string }[]>(user, 'tarot_readings?select=id&reading=neq.&limit=1'),
       db<{ day: string }[]>(user, 'rpc/my_active_days', { method: 'POST', body: {} }),
@@ -240,6 +245,8 @@ export function createApp() {
       hasTarotReading: Boolean(tarot.data?.length),
       activeDays: days.data?.length ?? 0,
       forgeReady: Boolean(forge.data?.length),
+      trainingConsent: profile.data?.[0]?.training_consent ?? null,
+      consentAskedAt: profile.data?.[0]?.training_consent_asked_at ?? null,
     };
   };
 
@@ -296,6 +303,7 @@ export function createApp() {
         avatarKind: account.avatarKind,
         avatarPath: account.avatarPath,
         elayraNotes: account.elayraNotes,
+        trainingConsent: account.trainingConsent,
         plan: account.plan.id,
         usage: { used: account.used, limit: account.plan.monthlyMessages },
         subscription: sub?.[0] || null,
@@ -342,6 +350,32 @@ export function createApp() {
       if (Object.keys(patch).length === 0) throw new HttpError(400, 'Niente da cambiare');
       await db(req.user, `profiles?id=eq.${req.user.id}`, { method: 'PATCH', body: patch });
       res.status(204).end();
+    })
+  );
+
+  // Consenso ad aiutare Elayra a crescere: facoltativo, si dà e si revoca quando si vuole.
+  app.get(
+    '/api/consent/training',
+    requireAuth,
+    route(async (req, res) => {
+      const { data } = await db<{ training_consent: boolean | null }[]>(req.user, 'profiles?select=training_consent');
+      res.json({ consent: data?.[0]?.training_consent ?? null });
+    })
+  );
+
+  app.post(
+    '/api/consent/training',
+    requireAuth,
+    route(async (req, res) => {
+      const allow = req.body?.allow;
+      if (typeof allow !== 'boolean') throw new HttpError(400, 'Scelta non valida');
+      const source = req.body?.source === 'chat' ? 'chat' : 'profile';
+      await db(req.user, `profiles?id=eq.${req.user.id}`, {
+        method: 'PATCH',
+        body: { training_consent: allow, training_consent_at: new Date().toISOString() },
+      });
+      await adminDb('training_consent_log', { method: 'POST', body: { user_id: req.user.id, granted: allow, source } });
+      res.json({ consent: allow });
     })
   );
 
@@ -528,6 +562,13 @@ export function createApp() {
           prefer: 'return=representation',
         });
         send('done', { id: assistant?.[0]?.id, content: reply });
+        // Elayra ha chiesto il consenso a crescere: si annota, così non lo richiede ogni giorno.
+        if (/\[\[\s*consenso\s*\]\]/i.test(reply)) {
+          await db(req.user, `profiles?id=eq.${req.user.id}`, {
+            method: 'PATCH',
+            body: { training_consent_asked_at: new Date().toISOString() },
+          }).catch(() => undefined);
+        }
 
         // Ogni tanto Elayra valuta se c'è un progetto da portare nella Forgia. Un errore qui non rovina la chat.
         try {
